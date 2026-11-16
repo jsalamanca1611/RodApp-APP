@@ -9,8 +9,8 @@
 
 Object.assign(S,{consent:{ident:false,antec:false,ubic:false},verStatus:null});
 const _fresh=fresh;fresh=function(){_fresh();Object.assign(S,{consent:{ident:false,antec:false,ubic:false},verStatus:null});
-  S.kyc=Object.assign(S.kyc,{cedula:'',alt:false,antec:'idle'})};
-S.kyc=Object.assign(S.kyc,{cedula:'',alt:false,antec:'idle'});
+  S.kyc=Object.assign(S.kyc,{cedula:'',nombre:'',ocr:null,ocrOk:false,ocrFails:0,manual:false,edited:false,alt:false,antec:'idle'})};
+S.kyc=Object.assign(S.kyc,{cedula:'',nombre:'',ocr:null,ocrOk:false,ocrFails:0,manual:false,edited:false,alt:false,antec:'idle'});
 
 /* ---------- cámara ---------- */
 const Cam=(()=>{
@@ -44,7 +44,12 @@ const Cam=(()=>{
   function done(blob,err){const k=kind;stop();closeLayer();const K=S.kyc;
     if(err){K[k]='error';K.msg=err;return render()}
     K[k]='loading';render();
-    RodAPI.uploadKyc(k,blob).then(()=>later(()=>{K[k]='ok';render()},700)).catch(()=>{K[k]='error';K.msg='No pudimos subir la foto. Revisa tu conexión.';render()})}
+    RodAPI.uploadKyc(k,blob).then(async()=>{
+      if(k==='front'){const o=await Ocr.read(blob);
+        if(o&&o.numero){K.ocr=o;K.ocrOk=!!o.ok;K.cedula=o.numero;K.nombre=o.nombre||K.nombre||'';K.edited=false;K.front='ok'}
+        else{K.ocrFails=(K.ocrFails||0)+1;K.front='error';K.msg=K.ocrFails>=2?'No pudimos leerla. Puedes escribir tus datos; una persona los revisará.':'No pudimos leer tu cédula. Busca más luz, sin reflejos, y encaja todo el documento.';if(K.ocrFails>=2){K.manual=true;K.ocrOk=false}}
+        return render()}
+      later(()=>{K[k]='ok';render()},500)}).catch(()=>{K[k]='error';K.msg='No pudimos subir la foto. Revisa tu conexión.';render()})}
   return{open,stop,shot,cancel:()=>{stop();closeLayer()}}})();
 const _closeLayer=closeLayer;closeLayer=function(){Cam.stop();_closeLayer()};
 
@@ -54,7 +59,7 @@ SCR.consent=()=>{const c=S.consent,e=S.errs;
   return `<div class="scr light">${hdr('','reg')}<div class="body">${prog(2,'Permisos')}<h1 class="t">Tus datos, tus reglas</h1>
   <p class="lead">RodApp trata datos sensibles. Cada permiso se acepta por separado y puedes retirarlo cuando quieras.</p>
   <div class="cards" style="gap:10px">
-  ${row('ident','Foto de cédula y selfie','Para confirmar que eres tú. La selfie es un dato biométrico: borramos las fotos tras la verificación (propuesta: 30 días). Si prefieres no dar la selfie, elige la verificación manual.',1)}
+  ${row('ident','Foto de cédula y selfie','Para confirmar que eres tú. Leemos tu nombre y número y guardamos esos datos y las fotos mientras tengas cuenta, para atender incidentes de seguridad (plazo por validar con abogado). La selfie es un dato biométrico: si prefieres no darla, elige la verificación manual.',1)}
   ${row('antec','Consulta de antecedentes judiciales','Revisamos tu cédula con la Policía Nacional para cuidar al grupo. Guardamos solo el resultado, no el detalle.',1)}
   ${row('ubic','Ubicación durante rodadas','Solo mientras la rodada está activa y solo con tu grupo. Se apaga al terminar.',0)}</div>
   <span class="msg" style="display:${e.consent?'block':'none'};color:var(--err)">Acepta los dos permisos obligatorios para continuar, con selfie o con verificación manual.</span>
@@ -65,9 +70,13 @@ SCR.consent=()=>{const c=S.consent,e=S.errs;
 SCR.kyc=()=>{const k=S.kyc,e=S.errs;
   if(k.step===0){const ok=k.front==='ok'&&k.back==='ok';
     return `<div class="scr light">${hdr('','consent')}<div class="body">${prog(3,'Identidad')}<h1 class="t">Verifica tu cédula</h1><p class="lead">Validamos que eres tú para cuidar al grupo. No mostramos tu cédula a nadie.</p>
-    <div class="field ${e.cedula?'err':''}"><label for="k_c">Número de cédula</label><input id="k_c" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="1020304050" data-bind="kyc.cedula" data-k="cedula" data-num="1" value="${esc(k.cedula)}" ${e.cedula?'aria-invalid="true" aria-describedby="m_c"':''}><span class="msg" id="m_c">Escribe entre 6 y 10 números, sin puntos.</span></div>
-    ${tile('front')}${tile('back')}<div class="banner info">${I('shield',20)}<span>Usamos la foto solo para confirmar tu identidad.</span></div></div>
-    <div class="foot"><button class="btn" data-act="kycNext" ${ok?'':'disabled'}>Continuar</button></div></div>`}
+    ${tile('front')}${tile('back')}
+    ${(ok||k.manual&&k.back==='ok')?`<div class="gcard" role="group" aria-label="Revisa tus datos"><b>${k.ocrOk&&!k.manual?'Leímos esto de tu cédula. Revísalo.':'Escribe tus datos como aparecen en la cédula.'}</b>
+     <div class="field ${e.nombre?'err':''}"><label for="k_n">Nombre completo</label><input id="k_n" autocomplete="off" data-bind="kyc.nombre" data-k="nombre" value="${esc(k.nombre)}" ${e.nombre?'aria-invalid="true" aria-describedby="m_n"':''}><span class="msg" id="m_n">Escribe nombres y apellidos.</span></div>
+     <div class="field ${e.cedula?'err':''}"><label for="k_c">Número de cédula</label><input id="k_c" inputmode="numeric" autocomplete="off" maxlength="10" data-bind="kyc.cedula" data-k="cedula" data-num="1" value="${esc(k.cedula)}" ${e.cedula?'aria-invalid="true" aria-describedby="m_c"':''}><span class="msg" id="m_c">Escribe entre 6 y 10 números, sin puntos.</span></div>
+     <span class="small">Si cambias algo de lo que leímos, una persona del equipo revisa tu cuenta antes de aprobarla.</span></div>`:''}
+    <div class="banner info">${I('shield',20)}<span>Guardamos tu nombre, tu cédula y las fotos para atender incidentes de seguridad. Solo el equipo autorizado puede verlos.</span></div></div>
+    <div class="foot"><button class="btn" data-act="kycNext" ${(ok||k.manual&&k.back==='ok')?'':'disabled'}>Continuar</button></div></div>`}
   if(k.alt)return SCR.antec();
   const st=k.selfie,col=st==='ok'?'#2FD98D':'#9DB0A6';
   return `<div class="scr light">${hdr('','@kycBack')}<div class="body">${prog(3,'Identidad')}<h1 class="t">Ahora, una selfie</h1><p class="lead">Centra tu cara en el óvalo. Sin casco, gorra ni gafas oscuras.</p>
@@ -83,7 +92,7 @@ SCR.antec=()=>{const k=S.kyc,st=k.antec;
   const body=st==='idle'?`<div class="banner info">${I('shield',20)}<span>${alt?'Sin selfie, una persona del equipo revisa tu cédula. Tarda hasta 48 horas y mientras tanto puedes ver rodadas y comunidad.':'Consultamos a la Policía Nacional con tu cédula. Tarda unos segundos.'}</span></div>`
   :st==='loading'?`<div class="empty" style="padding:30px 10px"><svg class="spin" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#12B76A" stroke-width="3" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/></svg><p class="lead" role="status">Consultando antecedentes…</p></div>`
   :st==='manual'?`<div class="banner ok" role="status">${I('check',20,3)}<span><b>Recibimos tu solicitud.</b> Una persona revisa tu cédula en máximo 48 horas. Mientras tanto puedes ver rodadas y comunidad.</span></div>`
-  :st==='clear'?`<div class="banner ok" role="status">${I('check',20,3)}<span><b>Sin asuntos pendientes con las autoridades judiciales.</b> Tu cuenta queda verificada.</span></div>`
+  :st==='clear'?(S.verStatus==='review'?`<div class="banner ok" role="status">${I('check',20,3)}<span><b>Sin asuntos pendientes con las autoridades judiciales.</b> Una persona confirma tus datos de la cédula antes de aprobar tu cuenta, en máximo 48 horas. Mientras tanto puedes ver rodadas y comunidad.</span></div>`:`<div class="banner ok" role="status">${I('check',20,3)}<span><b>Sin asuntos pendientes con las autoridades judiciales.</b> Tu cuenta queda verificada.</span></div>`)
   :st==='flag'?`<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>Tu verificación necesita revisión de una persona.</b> Mientras tanto puedes ver rodadas y comunidad, pero no unirte ni crear. Respondemos en máximo 48 horas. Si crees que hay un error, tienes derecho a pedir que se corrija ante la Policía Nacional y a escribirnos.</span></div>`
   :`<div class="banner err" role="alert">${I('warn',20)}<span><b>No pudimos consultar ahora.</b> Reintenta o continúa: quedarás pendiente de verificación hasta que se complete.</span></div>`;
   const foot=st==='idle'?`<button class="btn" data-act="antecRun">${alt?'Enviar a revisión':'Consultar antecedentes'}</button>`
@@ -100,13 +109,17 @@ Object.assign(ACT,{
   cap:d=>{const K=S.kyc;if(K[d.k]==='loading'||K[d.k]==='ok')return;Cam.open(d.k)},
   camShot:()=>Cam.shot(),camCancel:()=>Cam.cancel(),
   kycBack:()=>{if(S.kyc.alt||S.kyc.step===0){S.kyc.step=0;go('kyc')}else{S.kyc.step=0;render()}},
-  kycNext:()=>{const K=S.kyc;if(K.step===0){if(!/^\d{6,10}$/.test(K.cedula)){S.errs={cedula:1};return render()}S.errs={};
+  kycNext:()=>{const K=S.kyc;if(K.step===0){const e={};if(String(K.nombre||'').trim().split(/\s+/).length<2)e.nombre=1;if(!/^\d{6,10}$/.test(K.cedula))e.cedula=1;if(Object.keys(e).length){S.errs=e;return render()}S.errs={};
+      const n=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+      K.edited=!!(K.ocr&&(K.ocr.numero!==K.cedula||(K.ocr.nombre&&n(K.ocr.nombre)!==n(K.nombre))));
+      S.user.legal=K.nombre.trim();
       if(K.alt){K.step=1;return render()}K.step=1;render()}
     else{K.antec='idle';go('antec')}},
   antecRun:async()=>{const K=S.kyc;if(K.alt){K.antec='manual';S.verStatus='review';return render()}K.antec='loading';render();
+    try{await RodAPI.saveIdentity({nombre_legal:K.nombre.trim(),cedula:K.cedula,ocr_nombre:K.ocr?K.ocr.nombre:null,ocr_numero:K.ocr?K.ocr.numero:null,ocr_ok:!!K.ocrOk,editado:!!K.edited,alt:!!K.alt})}catch(e){K.antec='error';return render()}
     const r=await RodAPI.antecedentes({cedula:K.cedula,consent:{antec:true,at:new Date().toISOString()}});
     K.antec=r.status;
-    S.verStatus=r.status==='clear'?'ok':r.status==='flag'?'review':'pending';render()},
+    S.verStatus=r.status==='clear'?((K.ocrOk&&!K.edited&&!K.manual)?'ok':'review'):r.status==='flag'?'review':'pending';render()},
   antecSkip:()=>{S.verStatus='pending';go('veh')},
   antecNext:()=>go('veh'),
   vehBack:()=>{S.kyc.step=S.kyc.alt?0:1;go('kyc')}

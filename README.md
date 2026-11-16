@@ -14,6 +14,12 @@ PWA para rodadas de motociclistas en Bogotá y la Sabana. HTML, CSS y JavaScript
 `config.js` vacío = demo (nada sale del teléfono). Para conectar el backend: pega `supabaseUrl` y `anonKey`.
 En demo, una cédula que termina en **9** devuelve "en revisión" y en **7** devuelve "error del servicio".
 
+## Cédula: qué se lee, qué se guarda y qué NO se prueba
+- `ocr.js` lee número y nombre de la foto del frente con Tesseract.js (se descarga de jsDelivr al usarlo). Si la lectura falla dos veces, la persona escribe sus datos y la cuenta pasa a revisión humana. Si cambia algo de lo leído, también.
+- Se guardan nombre legal, cédula y fotos (tabla `identity_docs` y bucket `kyc`, solo accesibles al servidor) para incidentes de seguridad. Plazo de conservación: por definir con un abogado.
+- **El OCR lee, no autentica.** No detecta cédulas falsas ni compara la cara de la selfie con la del documento. Eso lo hace un proveedor de verificación de identidad o una persona revisando las fotos en Supabase.
+- Piloto sin proveedor: `supabase secrets set ANTEC_MODE=simulado`. La función aprueba cualquier cédula leída sin cambios (termina en 9 = revisión, en 7 = error). No consulta a la Policía.
+
 ## Backend (Supabase)
 1. Crea el proyecto. En *Authentication*, para el piloto desactiva "Confirm email" (o el registro pedirá confirmar y volver a entrar).
 2. Ejecuta `supabase/schema.sql` en el SQL Editor.
@@ -26,7 +32,7 @@ En demo, una cédula que termina en **9** devuelve "en revisión" y en **7** dev
 5. Pega URL y anon key en `config.js`. La `service_role` y el token del proveedor nunca van al navegador.
 
 ## Pruebas
-`node tests/clubs.test.js` verifica el tope de costo, el mínimo de Premium y que el descuento nunca baje al subir el % Premium.
+`node tests/ocr.test.js` prueba el lector de texto de la cédula con ejemplos. `node tests/clubs.test.js` verifica el tope de costo, el mínimo de Premium y que el descuento nunca baje al subir el % Premium.
 
 ## Decisiones abiertas
 - **Proveedor de antecedentes.** No existe API oficial de la Policía; la consulta pública pide captcha. `antecedentes/index.ts` usa Verifik como ejemplo. Falta cotizar, firmar contrato y revisar su tratamiento de datos.

@@ -428,7 +428,7 @@ const ACT={
  exp:d=>{S.reg.exp=d.v;delete S.errs.exp;render()},
  disp:d=>{const a=S.reg.disp,i=a.indexOf(d.v);i<0?a.push(d.v):a.splice(i,1);render()},
  regNext:()=>{const r=S.reg,e={};if(r.nombre.trim().length<3)e.nombre=1;if(!/^\S+@\S+\.\S+$/.test(r.correo))e.correo=1;if(r.pass.length<6)e.pass=1;if(!r.exp)e.exp=1;S.errs=e;
-   if(Object.keys(e).length)return render();S.user={nombre:r.nombre.trim(),exp:r.exp};S.kyc={step:0,front:'idle',back:'idle',selfie:'idle',failedOnce:false,msg:'',cedula:'',alt:false,antec:'idle'};go('consent')},
+   if(Object.keys(e).length)return render();S.user={nombre:r.nombre.trim(),exp:r.exp};S.kyc={step:0,front:'idle',back:'idle',selfie:'idle',failedOnce:false,msg:'',cedula:'',nombre:'',ocr:null,ocrOk:false,ocrFails:0,manual:false,edited:false,alt:false,antec:'idle'};go('consent')},
  cap:d=>{const k=d.k,K=S.kyc;if(K[k]==='loading'||K[k]==='ok')return;K[k]='loading';render();
    later(()=>{if(S.demo.fail&&!K.failedOnce){K.failedOnce=true;K[k]='error';K.msg=k==='selfie'?'No vimos tu cara completa. Intenta de nuevo.':'No pudimos leer tu documento. Busca más luz y evita reflejos.'}else K[k]='ok';render()},k==='selfie'?1800:1200)},
  kycBack:()=>{S.kyc.step=0;render()},

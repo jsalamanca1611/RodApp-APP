@@ -26,6 +26,22 @@ revoke insert, update on public.profiles from authenticated;
 grant insert (id,nombre,exp,cc,tipo,marca,placa) on public.profiles to authenticated;
 grant update (nombre,exp,cc,tipo,marca,placa) on public.profiles to authenticated;
 
+-- ============ identidad (nombre y cédula para seguridad) ============
+-- El usuario puede CREAR su fila una vez, pero no leerla ni editarla. Solo el servidor (service_role) y el equipo autorizado la consultan.
+-- ocr_*: lo que leyó el OCR de la foto. editado = el usuario cambió lo leído. Si ocr_ok es false o editado es true, la cuenta pasa a revisión humana.
+create table public.identity_docs (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  nombre_legal text not null, cedula text not null check (cedula ~ '^[0-9]{6,10}$'),
+  ocr_nombre text, ocr_numero text, ocr_ok boolean not null default false, editado boolean not null default false, alt boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create unique index identity_docs_cedula_uq on public.identity_docs (cedula);  -- una cédula, una cuenta
+alter table public.identity_docs enable row level security;
+create policy "identidad: crear la propia" on public.identity_docs for insert to authenticated with check (user_id = auth.uid());
+revoke all on public.identity_docs from authenticated;
+grant insert on public.identity_docs to authenticated;
+-- Recomendación: cifrar la columna cedula con Supabase Vault / pgsodium antes de producción.
+
 -- ============ consentimientos (evidencia Ley 1581) ============
 create table public.consents (
   id bigint generated always as identity primary key,

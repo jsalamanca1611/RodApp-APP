@@ -28,6 +28,9 @@ const RodAPI=(()=>{
       try{return await call('/functions/v1/antecedentes',{method:'POST',headers:hdr(true),body:JSON.stringify({cedula,consent})})}catch(e){return{status:'error'}}},
     async saveConsent(kinds,ver){if(!live)return;
       await call('/rest/v1/consents',{method:'POST',headers:hdr(true),body:JSON.stringify(kinds.map(k=>({user_id:ses.user.id,kind:k,text_version:ver})))})},
+    /* Nombre y cédula leídos/confirmados. La tabla identity_docs solo la lee el servidor; el usuario no puede ver ni editar su fila después. */
+    async saveIdentity(d){if(!live)return;
+      await call('/rest/v1/identity_docs',{method:'POST',headers:hdr(true,{Prefer:'resolution=ignore-duplicates'}),body:JSON.stringify(Object.assign({user_id:ses.user.id},d))})},
     async profile(){if(!live||!ses)return null;
       const r=await call('/rest/v1/profiles?id=eq.'+ses.user.id+'&select=nombre,exp,cc,placa,marca,ver_status',{headers:hdr(true)});return r[0]||null},
     async saveProfile(p){if(!live)return;await call('/rest/v1/profiles?on_conflict=id',{method:'POST',headers:hdr(true,{Prefer:'resolution=merge-duplicates'}),body:JSON.stringify(p)})}

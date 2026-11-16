@@ -25,6 +25,8 @@ function clasificar(status: number, body: any): 'clear' | 'flag' | 'error' {
 }
 
 async function consultar(cedula: string) {
+  // ANTEC_MODE=simulado (piloto sin proveedor): termina en 9 = revisión, en 7 = error, otro = limpio. NO consulta a la Policía.
+  if (Deno.env.get('ANTEC_MODE') === 'simulado') { const d = cedula.slice(-1); return d === '9' ? 'flag' : d === '7' ? 'error' : 'clear'; }
   const u = new URL('https://api.verifik.co/v2/co/policia/consultar');
   u.searchParams.set('documentType', 'CC'); u.searchParams.set('documentNumber', cedula);
   const r = await fetch(u, { headers: { Authorization: `Bearer ${Deno.env.get('ANTEC_PROVIDER_TOKEN')}`, 'Content-Type': 'application/json' } });
@@ -41,10 +43,13 @@ Deno.serve(async (req) => {
   const { data: { user } } = await usuario.auth.getUser();
   if (!user) return json({ error: 'auth' }, 401);
 
-  const { cedula } = await req.json().catch(() => ({}));
-  if (!/^\d{6,10}$/.test(String(cedula))) return json({ error: 'cedula' }, 400);
-
   const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+  // La cédula sale de la fila guardada (identity_docs), no de lo que mande el cliente en esta llamada.
+  const { data: idr } = await admin.from('identity_docs').select('cedula, ocr_ok, editado, alt').eq('user_id', user.id).maybeSingle();
+  if (!idr) return json({ error: 'identidad' }, 409);
+  const cedula = idr.cedula;
+  const revisar = !idr.ocr_ok || idr.editado || idr.alt;  // lectura dudosa, datos cambiados o verificación manual: lo decide una persona
 
   // 1) Consentimiento vigente registrado en servidor (no basta con lo que diga el cliente).
   const { data: cons } = await admin.from('consents').select('id').eq('user_id', user.id).eq('kind', 'antec').is('revoked_at', null).limit(1);
@@ -60,7 +65,7 @@ Deno.serve(async (req) => {
   await admin.from('antecedent_checks').insert({ user_id: user.id, status });
   if (status !== 'error') {
     await admin.from('profiles').update({
-      ver_status: status === 'clear' ? 'ok' : 'review',
+      ver_status: status === 'clear' && !revisar ? 'ok' : 'review',
       cedula_hash: await hmac(String(cedula), Deno.env.get('CEDULA_PEPPER')!), // detecta cédulas repetidas sin guardarlas
     }).eq('id', user.id);
   }
