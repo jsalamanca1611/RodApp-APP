@@ -25,7 +25,7 @@ function fresh(){
    f:{cc:null,zona:null,fecha:null},
    cr:{nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null},
    errs:{},lobby:null,run:null,rate:{},demo:{sound:true,fail:false},micOk:true,
-   tryPrev:null,xp:900,rodadas:12,badges:['bog','vvc'],award:null,zonaMia:'Norte',com:{vista:'tu',tema:null,gfilter:null,grupos:['norte'],conf:{},posts:comSeed(),liked:{},gusta:{},open:null,draft:{tema:null,txt:'',video:false},err:false}
+   tryPrev:null,xp:900,rodadas:12,badges:['bog','vvc'],award:null,zonaMia:'Norte',premium:false,club:'halcones',clubs:{vista:'copas',reg:'Bogotá y Sabana',cc:null,liga:null,sel:null,sim:null},com:{vista:'tu',tema:null,gfilter:null,grupos:['norte'],conf:{},posts:comSeed(),liked:{},gusta:{},open:null,draft:{tema:null,txt:'',video:false},err:false}
   });
 }
 fresh();
@@ -149,7 +149,7 @@ SCR.login=()=>`<div class="scr light">${hdr('','splash')}
  <button class="btn link" style="min-height:40px;justify-content:flex-start;padding:0" data-act="toast" data-m="Te enviamos un enlace a tu correo">¿Olvidaste tu contraseña?</button></div>
  <div class="foot"><button class="btn" data-act="login">Entrar</button><button class="btn link" data-act="go" data-to="reg">¿No tienes cuenta? Regístrate</button></div></div>`;
 
-const prog=(n,label)=>`<p class="pstep">Paso ${n} de 3 · ${label}</p><div class="prog">${[1,2,3].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('')}</div>`;
+const prog=(n,label)=>`<p class="pstep">Paso ${n} de 4 · ${label}</p><div class="prog">${[1,2,3,4].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('')}</div>`;
 
 SCR.reg=()=>{const e=S.errs,r=S.reg;
  const fld=(k,l,type,ph,msg,ac)=>`<div class="field ${e[k]?'err':''}"><label for="r_${k}">${l}</label><input id="r_${k}" type="${type}" placeholder="${ph}" autocomplete="${ac}" data-bind="reg.${k}" data-k="${k}" value="${esc(r[k])}" ${e[k]?`aria-invalid="true" aria-describedby="m_${k}"`:''}><span class="msg" id="m_${k}">${msg}</span></div>`;
@@ -187,7 +187,7 @@ SCR.kyc=()=>{const k=S.kyc;
   <div class="foot"><button class="btn" data-act="kycNext" ${st==='ok'?'':'disabled'}>Continuar</button></div></div>`};
 
 SCR.veh=()=>{const v=S.veh,e=S.errs;
- return `<div class="scr light">${hdr('','@vehBack')}<div class="body">${prog(3,'Tu moto')}<h1 class="t">Registra tu moto</h1><p class="lead">Con esto te mostramos rodadas a tu ritmo.</p>
+ return `<div class="scr light">${hdr('','@vehBack')}<div class="body">${prog(4,'Tu moto')}<h1 class="t">Registra tu moto</h1><p class="lead">Con esto te mostramos rodadas a tu ritmo.</p>
  <div class="msgbox ${e.cc?'err':''}"><div class="lab" style="margin-bottom:8px">Cilindraje</div><div class="cards ${e.cc?'opts err':''}" role="radiogroup">${CCS.map(c=>`<button class="opt" role="radio" aria-checked="${v.cc===c.k}" data-act="vcc" data-v="${c.k}"><span><b>${c.t}</b><span class="d">${c.d}</span></span><span class="rad">${v.cc===c.k?I('check',13,3.5):''}</span></button>`).join('')}</div><span class="msg">Elige el cilindraje de tu moto.</span></div>
  <div><div class="lab" style="margin-bottom:8px">Tipo de moto</div><div class="chips">${TIPOS.map(t=>`<button class="chip" aria-pressed="${v.tipo===t}" data-act="vtipo" data-v="${t}">${t}</button>`).join('')}</div></div>
  <div class="field ${e.marca?'err':''}"><label for="v_m">Marca</label><select id="v_m" data-bind="veh.marca" data-k="marca"><option value="">Selecciona la marca</option>${MARCAS.map(m=>`<option ${v.marca===m?'selected':''}>${m}</option>`).join('')}</select><span class="msg">Selecciona la marca de tu moto.</span></div>
@@ -196,13 +196,13 @@ SCR.veh=()=>{const v=S.veh,e=S.errs;
  </div><div class="foot"><button class="btn" data-act="vehNext">Finalizar registro</button></div></div>`};
 
 SCR.done=()=>`<div class="scr light"><div class="body" style="justify-content:center;align-items:center;text-align:center;gap:14px">
- <span class="okc pop" style="width:92px;height:92px">${I('check',46,3)}</span><h1 class="t">¡Cuenta verificada!</h1>
- <p class="lead" style="max-width:290px">${esc(first(S.user&&S.user.nombre)||'Listo')}, ya puedes unirte a rodadas y crear la tuya.</p>
+ <span class="okc pop" style="width:92px;height:92px">${I('check',46,3)}</span><h1 class="t">${S.verStatus&&S.verStatus!=='ok'?'¡Cuenta creada!':'¡Cuenta verificada!'}</h1>
+ <p class="lead" style="max-width:290px">${esc(first(S.user&&S.user.nombre)||'Listo')}, ${S.verStatus&&S.verStatus!=='ok'?'tu verificación sigue en revisión. Mientras tanto explora rodadas y comunidad.':'ya puedes unirte a rodadas y crear la tuya.'}</p>
  <div class="banner info" style="text-align:left;width:100%">${I('shield',20)}<span>${esc(S.veh.marca||'Tu moto')} · ${esc(S.veh.cc||'')} cc · ${esc(S.veh.placa||'')}</span></div></div>
  <div class="foot"><button class="btn" data-act="toHome">Buscar rodadas</button></div></div>`;
 
 /* ----- home ----- */
-const tabbar=cur=>`<nav class="tabs" aria-label="Principal">${[['home','Inicio','home'],['comunidad','Comunidad','people'],['perfil','Perfil','user']].map(([k,l,i])=>`<button data-act="go" data-to="${k}" ${cur===k?'aria-current="true"':''}>${I(i,24)}${l}</button>`).join('')}</nav>`;
+const tabbar=cur=>`<nav class="tabs" aria-label="Principal">${[['home','Inicio','home'],['comunidad','Comunidad','people'],['clubes','Clubes','trophy'],['perfil','Perfil','user']].map(([k,l,i])=>`<button data-act="go" data-to="${k}" ${cur===k?'aria-current="true"':''}>${I(i,24)}${l}</button>`).join('')}</nav>`;
 const lvl=n=>`<span class="lvl"><span class="b">${[1,2,3].map(i=>`<i class="${i<=NIV[n]?'f':''}"></i>`).join('')}</span>${n}</span>`;
 function rideCard(r){const c=cuposOf(r);const cl=c<=0?'full':c<=2?'low':'';
  return `<button class="ride" data-act="open" data-id="${r.id}"><div class="rtop"><h3>${esc(r.name)}</h3>${lvl(r.nivel)}</div>
@@ -246,7 +246,7 @@ SCR.comunidad=()=>{const C=S.com,gf=C.gfilter&&GRUPOS.find(x=>x.k===C.gfilter);
   ${vistas}${main}
   </div><button class="fab" data-act="compose">${I('plus',24,2.6)}Publicar</button>${tabbar('comunidad')}</div>`};
 SCR.perfil=()=>{const u=S.user||{nombre:'Camilo Rojas',exp:'Intermedio'},xi=xpInfo(S.xp),m=S.rides.filter(r=>r.part.includes('Tú'));
-  return `<div class="scr light"><div class="hhead">${wordmark()}<span></span></div><div class="body"><div style="display:flex;gap:14px;align-items:center">${av(u.nombre,'')}<div><h1 class="t" style="font-size:24px">${esc(u.nombre)}</h1><span class="host" style="margin-top:4px">${vb()}Identidad verificada</span></div></div>
+  return `<div class="scr light"><div class="hhead">${wordmark()}<span></span></div><div class="body"><div style="display:flex;gap:14px;align-items:center">${av(u.nombre,'')}<div><h1 class="t" style="font-size:24px">${esc(u.nombre)}</h1><span class="host" style="margin-top:4px">${S.verStatus&&S.verStatus!=='ok'?`${I('clock',14)}Verificación en revisión`:`${vb()}Identidad verificada`}</span></div></div>
   <div class="stats"><div class="stat"><b>${u.exp?u.exp.slice(0,4)+'.':'—'}</b><span>Ritmo</span></div><div class="stat"><b>4,8</b><span>Calificación</span></div><div class="stat"><b>${S.rodadas}</b><span>Rodadas</span></div></div>
   <div class="fact"><b>${esc(S.veh.marca||'Yamaha')} · ${esc(S.veh.cc||'200–500')} cc</b><span>Placa ${esc(S.veh.placa||'ABC12D')}${S.veh.bt?' · Intercomunicador Bluetooth':''}</span></div>
   <div class="xp" data-tour="p-xp"><div class="xtop"><span class="xlv">${xi.l+1}</span><div><b>Nivel ${xi.l+1} · ${xi.name}</b><span class="small">${S.xp} XP${xi.b?' · faltan '+xi.left+' para el nivel '+(xi.l+2):' · Nivel máximo'}</span></div></div>
@@ -298,6 +298,7 @@ const readyN=()=>S.lobby.ppl.filter(p=>p.st==='ready').length;
 SCR.lobby=()=>{const L=S.lobby,r=S.sel;const rn=readyN();const total=L.ppl.length;
  return `<div class="scr light">${hdr('Sala de espera','detalle','<button class="btn link sm" style="min-height:44px" data-act="leave">'+(L.host?'Cancelar':'Salir')+'</button>')}
  <div class="body" id="lbody"><div><h1 class="t" style="font-size:26px">${esc(r.name)}</h1><p class="lead" style="margin-top:4px">${r.fecha}, ${r.hora} · ${esc(r.punto)}</p></div>
+  <button class="btn sm ghost" data-act="mapa">${I('pin',18)}Ver mapa del grupo</button>
   ${L.started?`<div class="banner ok">${I('flag',20)}<span><b>${esc(first(r.host))} inició la rodada.</b> Ve al punto de encuentro.</span></div>`:''}
   <div><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b id="lcount">${rn} de ${total} listos</b><span class="small">${total} de ${r.cupo} cupos</span></div><div class="meter"><i id="lmeter" style="width:${total?rn/total*100:0}%"></i></div></div>
   <div id="lppl">${pplHTML()}</div>
@@ -427,7 +428,7 @@ const ACT={
  exp:d=>{S.reg.exp=d.v;delete S.errs.exp;render()},
  disp:d=>{const a=S.reg.disp,i=a.indexOf(d.v);i<0?a.push(d.v):a.splice(i,1);render()},
  regNext:()=>{const r=S.reg,e={};if(r.nombre.trim().length<3)e.nombre=1;if(!/^\S+@\S+\.\S+$/.test(r.correo))e.correo=1;if(r.pass.length<6)e.pass=1;if(!r.exp)e.exp=1;S.errs=e;
-   if(Object.keys(e).length)return render();S.user={nombre:r.nombre.trim(),exp:r.exp};S.kyc={step:0,front:'idle',back:'idle',selfie:'idle',failedOnce:false,msg:''};go('kyc')},
+   if(Object.keys(e).length)return render();S.user={nombre:r.nombre.trim(),exp:r.exp};S.kyc={step:0,front:'idle',back:'idle',selfie:'idle',failedOnce:false,msg:'',cedula:'',alt:false,antec:'idle'};go('consent')},
  cap:d=>{const k=d.k,K=S.kyc;if(K[k]==='loading'||K[k]==='ok')return;K[k]='loading';render();
    later(()=>{if(S.demo.fail&&!K.failedOnce){K.failedOnce=true;K[k]='error';K.msg=k==='selfie'?'No vimos tu cara completa. Intenta de nuevo.':'No pudimos leer tu documento. Busca más luz y evita reflejos.'}else K[k]='ok';render()},k==='selfie'?1800:1200)},
  kycBack:()=>{S.kyc.step=0;render()},

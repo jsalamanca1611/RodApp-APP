@@ -389,3 +389,50 @@ html,body{height:100%;margin:0;background:#050806}
 @media (min-width:600px){
   #proto .phone{height:min(920px,calc(100% - 32px));border-radius:28px;border:1px solid #1A211E;box-shadow:0 30px 80px rgba(0,0,0,.6)}
 }
+
+/* ===== Clubes ===== */
+.lchip.off{background:rgba(255,255,255,.08);color:var(--mut)}
+.minec{text-align:left;width:100%;box-shadow:inset 0 0 0 1.5px rgba(18,183,106,.45)}
+.dmeter .dtop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;font-size:14px}
+.dbar{position:relative;height:10px;border-radius:9px;background:var(--line);margin:4px 0 22px}
+.dbar>span{position:absolute;left:0;top:0;bottom:0;border-radius:9px;background:var(--green);transition:width .4s}
+.dbar .mk{position:absolute;top:-3px;width:2px;height:16px;background:#4A5B52}
+.dbar .mk.on{background:#fff}
+.dbar .mk b{position:absolute;top:19px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:var(--mut);white-space:nowrap}
+.dbar .mk.on b{color:#8FF0C0}
+.crow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:16px;background:var(--surface);min-height:56px}
+.crow .rk{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:#1B2520;color:var(--mut)}
+.crow .rk.t1{background:#F5C451;color:#2A1D00}.crow .rk.t2{background:#C9D3CE;color:#10151A}.crow .rk.t3{background:#D58B5A;color:#2A1200}
+.crow .cinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.crow .cinfo b{font-size:16px}
+.crow .cpts{text-align:right;display:flex;flex-direction:column}.crow .cpts b{font:400 22px/1 var(--display)}
+.pod{display:flex;align-items:flex-end;justify-content:center;gap:10px;padding:6px 0 2px}
+.pcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:0}
+.pcol>.small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbar{width:100%;border-radius:12px 12px 0 0;display:grid;place-items:center;font:400 24px var(--display);color:#10151A}
+.pbar.p1{background:#F5C451}.pbar.p2{background:#C9D3CE}.pbar.p3{background:#D58B5A}
+.perk{display:flex;gap:10px;align-items:flex-start;opacity:.55}
+.perk.on{opacity:1}
+.perk .pk{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#1B2520;color:var(--mut)}
+.perk.on .pk{background:var(--green);color:#04130B}
+input[type=range]{accent-color:var(--green);min-height:32px}
+
+/* ===== Cámara ===== */
+.camfull{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;z-index:30}
+.camwrap{position:relative;flex:1;overflow:hidden;background:#05080A}
+.camwrap video{width:100%;height:100%;object-fit:cover}
+.camguide{position:absolute;left:8%;right:8%;top:30%;aspect-ratio:1.6;border:3px solid rgba(255,255,255,.85);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.45);pointer-events:none}
+.camguide.oval{left:16%;right:16%;top:14%;aspect-ratio:auto;height:62%;border-radius:50%}
+.camhint{position:absolute;left:16px;right:16px;bottom:14px;margin:0;text-align:center;font-size:14px;color:#fff;text-shadow:0 1px 4px #000}
+.camfoot{display:flex;gap:10px;padding:14px 18px 22px;background:#000}
+.camfoot .btn{flex:1}
+.camerr{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;text-align:center;color:#CFE0D6}
+.btn.upl{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* ===== Mapa ===== */
+.mapbox{position:relative;height:300px;border-radius:18px;overflow:hidden;background:#0B120F;box-shadow:inset 0 0 0 1.5px var(--line);flex:none}
+.mkr{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#04130B;border:2px solid #04130B}
+.prow{display:flex;align-items:center;gap:12px;padding:8px 0}
+.prow .pn{flex:1;display:flex;flex-direction:column}
+.prow .pst{font-size:12px;font-weight:700;color:#8FF0C0}
+.prow.weak .pst{color:#FFC76B}.prow.lost{opacity:.6}.prow.lost .pst{color:#FFB4AE}

@@ -10,6 +10,7 @@ const Tour=(()=>{
     {scr:'home',sel:'#screen .ride',t:'Cada rodada, clara',d:'Mira el nivel, los cupos y quién guía antes de unirte.'},
     {scr:'home',sel:'#screen .fab',t:'Crea la tuya',d:'¿No hay una para ti? Publica ruta, nivel y cupos.'},
     {scr:'home',sel:'#screen .tabs button:nth-child(2)',t:'Comunidad',d:'Avisos de la vía, grupos y rodadas de tu zona.'},
+    {scr:'home',sel:'#screen .tabs button:nth-child(3)',t:'Clubes',d:'Compite con tu club por asistencia y rodadas sin incidentes.'},
     {scr:'comunidad',sel:'#screen [data-tour="c-vistas"]',t:'Tu vista, tu zona, tus grupos',d:'Cambia entre lo que te interesa y lo que pasa cerca.'},
     {scr:'comunidad',sel:'#screen [data-tour="c-temas"]',t:'Avisos que ayudan',d:'Peligros, hurtos, normas y talleres. Confirma lo que veas en la vía.'},
     {scr:'hud',sel:'#screen .alerts',t:'Alerta de un toque',d:'En ruta, un toque avisa al grupo por voz. Sin escribir ni mirar.'},
