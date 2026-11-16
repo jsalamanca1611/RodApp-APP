@@ -42,3 +42,9 @@ En demo, solo la cédula de prueba **1000000009** devuelve "en revisión" y **10
 - **Precios**: `ECON` en `clubs-model.js` son supuestos (Premium $14.900, cuota de club $89.000). Validar con clubes reales.
 - **Proveedor de mapa**: MapLibre con un `style.json` (MapTiler, Protomaps u otro). Sin estilo, la app dibuja un mapa esquemático. Comparar costo por carga y cobertura de Colombia.
 - **Límites web**: el GPS solo reporta con pantalla encendida y app en primer plano; iOS no tiene vibración y exige instalar la PWA para notificaciones. Si el piloto choca con esto, evaluar Capacitor.
+
+
+## Modo en vivo (Supabase)
+Con `supabaseUrl` y `anonKey` en `config.js`, `live.js` reemplaza las rodadas, el chat, el estado "listo", el inicio de la rodada y la ubicación por datos reales compartidos entre teléfonos (sondeo REST cada 2–5 s; sin bots). Requiere ejecutar `supabase/schema.sql` y luego `supabase/migrations/002_rodadas_en_vivo.sql`.
+Pendiente: el HUD del Modo Rodada sigue simulado; la verificación de antecedentes es simulada (`antecedentes:'piloto'`).
+Prueba local: `python3 mock.py` (ver `tests/live/`) levanta una base falsa y `t_live.py` abre dos navegadores.
