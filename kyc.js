@@ -128,6 +128,12 @@ Object.assign(ACT,{
 const _kycNext=ACT.kycNext;
 ACT.kycNext=()=>{const K=S.kyc;if(K.step===1&&K.alt){K.antec='idle';return go('antec')}_kycNext()};
 
+/* Cuenta nueva = todo en cero: sin XP, rodadas, insignias, club, Premium ni calificación. La cuenta de demostración
+   (camilo@rodapp.co) conserva datos de ejemplo para enseñar la app llena. */
+function newAccount(){Object.assign(S,{xp:0,rodadas:0,badges:[],award:null,rating:null,premium:false,club:null});
+  S.clubs=Object.assign(S.clubs,{sel:null,sim:null});S.com=Object.assign(S.com,{grupos:[],conf:{},liked:{},gusta:{}});
+  S.rides.forEach(r=>{r.part=r.part.filter(n=>n!=='Tú')})}
+
 /* Registro real: la cuenta se crea al validar el perfil (paso 1), porque las fotos y la consulta necesitan un usuario autenticado.
    Si el proyecto exige confirmar el correo, no hay sesión: se pide confirmar y volver a iniciar sesión. */
 const _regNext=ACT.regNext;
@@ -136,7 +142,7 @@ ACT.regNext=async()=>{const r=S.reg,e={};if(r.nombre.trim().length<3)e.nombre=1;
   try{await RodAPI.signUp(r.correo.trim(),r.pass,{nombre:r.nombre.trim(),exp:r.exp});
     if(RodAPI.live&&!RodAPI.session()){toast('Revisa tu correo para confirmar la cuenta y luego inicia sesión');return}}
   catch(err){toast(err&&err.status===422?'Ese correo ya tiene cuenta. Inicia sesión.':'No pudimos crear tu cuenta. Intenta de nuevo.');return}
-  _regNext()};
+  newAccount();_regNext()};
 const _consentNext=ACT.consentNext;
 ACT.consentNext=async()=>{const c=S.consent;if(!c.ident||!c.antec)return _consentNext();
   try{await RodAPI.saveConsent(['ident','antec'].concat(c.ubic?['ubic']:[]),'2026-11-v0')}catch(e){toast('No pudimos guardar tu autorización. Intenta de nuevo.');return}
@@ -144,7 +150,7 @@ ACT.consentNext=async()=>{const c=S.consent;if(!c.ident||!c.antec)return _consen
 const _login=ACT.login;
 ACT.login=async()=>{if(!RodAPI.live)return _login();
   try{await RodAPI.signIn(S.login.email.trim(),S.login.pass);const p=await RodAPI.profile();
-    S.user={nombre:p?p.nombre:'Rodador',exp:p?p.exp:null};S.veh=Object.assign(S.veh,p?{cc:p.cc,marca:p.marca,placa:p.placa}:{});
+    newAccount();S.xp=p&&p.xp?p.xp:0;S.user={nombre:p?p.nombre:'Rodador',exp:p?p.exp:null};S.veh=Object.assign(S.veh,p?{cc:p.cc,marca:p.marca,placa:p.placa}:{});
     S.verStatus=p?p.ver_status:'pending';S.verified=S.verStatus==='ok';S.errs={};S.tourOffer=true;go('home')}
   catch(e){S.errs={login:1};render()}};
 const _veh=ACT.vehNext;

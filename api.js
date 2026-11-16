@@ -32,6 +32,6 @@ const RodAPI=(()=>{
     async saveIdentity(d){if(!live)return;
       await call('/rest/v1/identity_docs',{method:'POST',headers:hdr(true,{Prefer:'resolution=ignore-duplicates'}),body:JSON.stringify(Object.assign({user_id:ses.user.id},d))})},
     async profile(){if(!live||!ses)return null;
-      const r=await call('/rest/v1/profiles?id=eq.'+ses.user.id+'&select=nombre,exp,cc,placa,marca,ver_status',{headers:hdr(true)});return r[0]||null},
+      const r=await call('/rest/v1/profiles?id=eq.'+ses.user.id+'&select=nombre,exp,cc,placa,marca,ver_status,xp',{headers:hdr(true)});return r[0]||null},
     async saveProfile(p){if(!live)return;await call('/rest/v1/profiles?on_conflict=id',{method:'POST',headers:hdr(true,{Prefer:'resolution=merge-duplicates'}),body:JSON.stringify(p)})}
   }})();

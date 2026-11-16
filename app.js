@@ -25,7 +25,7 @@ function fresh(){
    f:{cc:null,zona:null,fecha:null},
    cr:{nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null},
    errs:{},lobby:null,run:null,rate:{},demo:{sound:true,fail:false},micOk:true,
-   tryPrev:null,xp:900,rodadas:12,badges:['bog','vvc'],award:null,zonaMia:'Norte',premium:false,club:'halcones',clubs:{vista:'copas',reg:'Bogotá y Sabana',cc:null,liga:null,sel:null,sim:null},com:{vista:'tu',tema:null,gfilter:null,grupos:['norte'],conf:{},posts:comSeed(),liked:{},gusta:{},open:null,draft:{tema:null,txt:'',video:false},err:false}
+   tryPrev:null,xp:900,rodadas:12,badges:['bog','vvc'],award:null,zonaMia:'Norte',rating:4.8,premium:false,club:'halcones',clubs:{vista:'copas',reg:'Bogotá y Sabana',cc:null,liga:null,sel:null,sim:null},com:{vista:'tu',tema:null,gfilter:null,grupos:['norte'],conf:{},posts:comSeed(),liked:{},gusta:{},open:null,draft:{tema:null,txt:'',video:false},err:false}
   });
 }
 fresh();
@@ -247,7 +247,7 @@ SCR.comunidad=()=>{const C=S.com,gf=C.gfilter&&GRUPOS.find(x=>x.k===C.gfilter);
   </div><button class="fab" data-act="compose">${I('plus',24,2.6)}Publicar</button>${tabbar('comunidad')}</div>`};
 SCR.perfil=()=>{const u=S.user||{nombre:'Camilo Rojas',exp:'Intermedio'},xi=xpInfo(S.xp),m=S.rides.filter(r=>r.part.includes('Tú'));
   return `<div class="scr light"><div class="hhead">${wordmark()}<span></span></div><div class="body"><div style="display:flex;gap:14px;align-items:center">${av(u.nombre,'')}<div><h1 class="t" style="font-size:24px">${esc(u.nombre)}</h1><span class="host" style="margin-top:4px">${S.verStatus&&S.verStatus!=='ok'?`${I('clock',14)}Verificación en revisión`:`${vb()}Identidad verificada`}</span></div></div>
-  <div class="stats"><div class="stat"><b>${u.exp?u.exp.slice(0,4)+'.':'—'}</b><span>Ritmo</span></div><div class="stat"><b>4,8</b><span>Calificación</span></div><div class="stat"><b>${S.rodadas}</b><span>Rodadas</span></div></div>
+  <div class="stats"><div class="stat"><b>${u.exp?u.exp.slice(0,4)+'.':'—'}</b><span>Ritmo</span></div><div class="stat"><b>${S.rating?String(S.rating).replace('.',','):'—'}</b><span>${S.rating?'Calificación':'Sin calificar'}</span></div><div class="stat"><b>${S.rodadas}</b><span>Rodadas</span></div></div>
   <div class="fact"><b>${esc(S.veh.marca||'Yamaha')} · ${esc(S.veh.cc||'200–500')} cc</b><span>Placa ${esc(S.veh.placa||'ABC12D')}${S.veh.bt?' · Intercomunicador Bluetooth':''}</span></div>
   <div class="xp" data-tour="p-xp"><div class="xtop"><span class="xlv">${xi.l+1}</span><div><b>Nivel ${xi.l+1} · ${xi.name}</b><span class="small">${S.xp} XP${xi.b?' · faltan '+xi.left+' para el nivel '+(xi.l+2):' · Nivel máximo'}</span></div></div>
    <div class="meter" role="progressbar" aria-label="Experiencia" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${xi.pct}"><i style="width:${xi.pct}%"></i></div>
