@@ -13,6 +13,10 @@ const DEST_LL={Norte:[5.0221,-74.0053],Calera:[4.7207,-73.9686],Patios:[4.7207,-
 const hav=(a,b)=>{const R=6371000,r=x=>x*Math.PI/180,dl=r(b[0]-a[0]),dn=r(b[1]-a[1]),h=Math.sin(dl/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
 const fmtD=m=>m<950?Math.round(m/10)*10+' m':(m/1000).toFixed(1).replace('.',',')+' km';
 const ago=t=>{const s=Math.max(0,Math.round((Date.now()-t)/1000));return s<5?'ahora':s<60?'hace '+s+' s':'hace '+Math.round(s/60)+' min'};
+/* Enlaces para llegar al punto de encuentro con la app de navegación del usuario. Las coordenadas de SPOT_LL son aproximadas:
+   en producción el organizador fija el punto en un selector de mapa y se guarda lat/lng en la rodada. */
+const navLink=k=>{const p=SPOT_LL[SPOTS.indexOf(S.sel.punto)]||SPOT_LL[0],ll=p[0]+','+p[1];
+  return k==='waze'?`https://waze.com/ul?ll=${ll}&navigate=yes&utm_source=rodapp`:`https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving`};
 const STALE_MS=20000,LOST_MS=60000,LAG_M=1500;
 
 /* ---------- estado en vivo ---------- */
@@ -61,15 +65,19 @@ const MapKit={map:null,mk:{},
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa esquemático del grupo" style="width:100%;height:100%;display:block;background:#0B120F"><path d="M${X(p0)} ${Y(p0)} Q${X(mid)} ${Y(mid)} ${X(d)} ${Y(d)}" fill="none" stroke="#2A3A32" stroke-width="6" stroke-linecap="round"/><path d="M${X(p0)} ${Y(p0)} Q${X(mid)} ${Y(mid)} ${X(d)} ${Y(d)}" fill="none" stroke="#12B76A" stroke-width="2" stroke-dasharray="3 7" stroke-linecap="round"/>
     <rect x="${X(p0)-7}" y="${Y(p0)-7}" width="14" height="14" rx="4" fill="#F5C451" stroke="#000" stroke-width="2"/><text x="${X(p0)}" y="${Y(p0)+24}" text-anchor="middle" font-size="11" fill="#F5C451" stroke="#000" stroke-width="3" paint-order="stroke">Encuentro</text>
     <path d="M${X(d)} ${Y(d)-4} l8 14 h-16z" fill="#fff"/>${peers}${Live.me?dot(Live.me,'#007AFF','Tú'):''}</svg>`},
-  async maplibre(el){const st=RodAPI.cfg.mapStyle;if(!st)return false;
+  OSM:{version:8,sources:{o:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'}},layers:[{id:'o',type:'raster',source:'o'}]},
+  async maplibre(el){let st=RodAPI.cfg.mapStyle;if(!st)return false;if(st==='osm')st=this.OSM;
     try{if(!window.maplibregl){await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})}
-      const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:30}});return true}catch(e){return false}},
+      const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:40}});
+      this.map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+      const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];
+      const e=document.createElement('div');e.className='mkr meet';e.textContent='★';new maplibregl.Marker({element:e}).setLngLat([p0[1],p0[0]]).addTo(this.map);return true}catch(e){return false}},
   draw(){const el=$('#mapbox');if(!el)return;
     if(this.map){const upd=(id,ll,c,l)=>{let m=this.mk[id];if(!m){const d=document.createElement('div');d.className='mkr';d.style.background=c;d.textContent=l;m=this.mk[id]=new maplibregl.Marker({element:d}).setLngLat([ll[1],ll[0]]).addTo(this.map)}else{m.setLngLat([ll[1],ll[0]])}};
-      if(Live.me)upd('me',Live.me,'#007AFF','Tú');Object.entries(Live.peers).forEach(([id,q])=>upd(id,q.ll,'#2FD98D',ini(q.n)))}
+      if(Live.me){upd('me',Live.me,'#007AFF','Tú');if(!this._fit){this._fit=1;const B=this.bounds();this.map.fitBounds([[B.w,B.s],[B.e,B.n]],{padding:40,duration:0})}}Object.entries(Live.peers).forEach(([id,q])=>{upd(id,q.ll,'#2FD98D',ini(q.n));const a=Date.now()-q.t;this.mk[id].getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
     else el.innerHTML=this.svg();
     const l=$('#peers');if(l)l.innerHTML=peersHTML();const b=$('#lagban');if(b)b.innerHTML=lagHTML()},
-  leave(){if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={}}}};
+  leave(){if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0}}};
 
 function peerRows(){const me=Live.me,now=Date.now();
   return Object.values(Live.peers).map(q=>({n:q.n,d:me?hav(me,q.ll):null,a:now-q.t})).sort((a,b)=>(a.d==null)-(b.d==null)||a.d-b.d)}
@@ -84,6 +92,7 @@ SCR.mapa=()=>{const r=S.sel;
   <div id="mapbox" class="mapbox">${Live.sharing?'':`<div class="empty" style="padding:50px 20px"><span class="ill">${I('pin',34)}</span><p class="lead">Activa tu ubicación para ver al grupo y el punto de encuentro.</p></div>`}</div>
   <div id="lagban">${lagHTML()}</div>
   <div class="small" style="margin:0">${esc(r.name)} · salida ${esc(r.punto)}</div>
+  <div class="grow2" style="gap:10px"><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('waze')}">Ir con Waze</a><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('gmaps')}">Ir con Google Maps</a></div>
   ${Live.err?`<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}. Mostramos una posición de ejemplo.</span></div>`:''}
   <div id="peers">${peersHTML()}</div>
   <div class="banner info">${I('shield',20)}<span>Solo tu grupo ve tu ubicación, solo mientras comparte, y se apaga al terminar la rodada. En ruta, el aviso a los compañeros llega por voz.</span></div>

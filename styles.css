@@ -436,3 +436,6 @@ input[type=range]{accent-color:var(--green);min-height:32px}
 .prow .pn{flex:1;display:flex;flex-direction:column}
 .prow .pst{font-size:12px;font-weight:700;color:#8FF0C0}
 .prow.weak .pst{color:#FFC76B}.prow.lost{opacity:.6}.prow.lost .pst{color:#FFB4AE}
+
+.mkr.meet{background:#F5C451;font-size:15px;border-radius:8px}
+.maplibregl-canvas{outline:none}
