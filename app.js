@@ -121,7 +121,7 @@ function render(){
   const nb=sc.querySelector('.body');if(nb&&keep)nb.scrollTop=keep;
   if(AFTER[S.screen])AFTER[S.screen]();
 }
-function toast(m){const t=$('#toast');t.innerHTML=`<div class="toast">${I('check',20,3)}<span>${esc(m)}</span></div>`;clearTimeout(toast.t);toast.t=setTimeout(()=>t.innerHTML='',2600)}
+function toast(m){const t=$('#toast');t.innerHTML=`<div class="toast">${I('check',20,3)}<span>${esc(m)}</span></div>`;clearTimeout(toast.t);toast.t=setTimeout(()=>t.innerHTML='',m.length>60?6000:2600)}
 let _lastFocus=null;
 function openLayer(html){const l=$('#layer');const first=l.hidden;if(first)_lastFocus=document.activeElement;l.innerHTML=html;l.hidden=false;
   const d=l.querySelector('[role=dialog]');if(d){d.setAttribute('aria-modal','true');d.setAttribute('tabindex','-1');if(first){const f=d.querySelector('button,textarea,input');try{(f||d).focus({preventScroll:true})}catch(e){}}}}

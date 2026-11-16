@@ -158,7 +158,7 @@ ACT.regNext=async()=>{const r=S.reg,e={};if(r.nombre.trim().length<3)e.nombre=1;
   if(Object.keys(e).length)return _regNext();
   try{await RodAPI.signUp(r.correo.trim(),r.pass,{nombre:r.nombre.trim(),exp:r.exp});
     if(RodAPI.live&&!RodAPI.session()){toast('Revisa tu correo para confirmar la cuenta y luego inicia sesión');return}}
-  catch(err){toast(err&&err.status===422?'Ese correo ya tiene cuenta. Inicia sesión.':'No pudimos crear tu cuenta. Intenta de nuevo.');return}
+  catch(err){console.error('signUp',err);const m=err&&err.message?String(err.message).slice(0,90):'';toast(err&&err.status===422?'Ese correo ya tiene cuenta. Inicia sesión.':'No pudimos crear tu cuenta'+(m?': '+m:'. Intenta de nuevo.')+(err&&err.status?' ('+err.status+')':''));return}
   newAccount();_regNext()};
 const _consentNext=ACT.consentNext;
 ACT.consentNext=async()=>{const c=S.consent;if(!c.ident||!c.antec)return _consentNext();
