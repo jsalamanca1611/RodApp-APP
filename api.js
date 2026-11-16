@@ -24,7 +24,7 @@ const RodAPI=(()=>{
       if(!r.ok)throw new Error('upload');return{path:p}},
     /* Devuelve {status:'clear'|'flag'|'error'}. Solo estado: el detalle no se guarda. */
     async antecedentes({cedula,consent}){
-      if(!live){await wait(1600);const d=String(cedula).slice(-1);return{status:d==='9'?'flag':d==='7'?'error':'clear',demo:true}}
+      if(!live){await wait(1600);const c=String(cedula);return{status:c==='1000000009'?'flag':c==='1000000007'?'error':'clear',demo:true}}
       try{return await call('/functions/v1/antecedentes',{method:'POST',headers:hdr(true),body:JSON.stringify({cedula,consent})})}catch(e){return{status:'error'}}},
     async saveConsent(kinds,ver){if(!live)return;
       await call('/rest/v1/consents',{method:'POST',headers:hdr(true),body:JSON.stringify(kinds.map(k=>({user_id:ses.user.id,kind:k,text_version:ver})))})},

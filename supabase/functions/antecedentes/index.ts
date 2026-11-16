@@ -25,8 +25,8 @@ function clasificar(status: number, body: any): 'clear' | 'flag' | 'error' {
 }
 
 async function consultar(cedula: string) {
-  // ANTEC_MODE=simulado (piloto sin proveedor): termina en 9 = revisión, en 7 = error, otro = limpio. NO consulta a la Policía.
-  if (Deno.env.get('ANTEC_MODE') === 'simulado') { const d = cedula.slice(-1); return d === '9' ? 'flag' : d === '7' ? 'error' : 'clear'; }
+  // ANTEC_MODE=simulado (piloto sin proveedor): 1000000009 = revisión, 1000000007 = error, cualquier otra = limpio. NO consulta a la Policía.
+  if (Deno.env.get('ANTEC_MODE') === 'simulado') { return cedula === '1000000009' ? 'flag' : cedula === '1000000007' ? 'error' : 'clear'; }
   const u = new URL('https://api.verifik.co/v2/co/policia/consultar');
   u.searchParams.set('documentType', 'CC'); u.searchParams.set('documentNumber', cedula);
   const r = await fetch(u, { headers: { Authorization: `Bearer ${Deno.env.get('ANTEC_PROVIDER_TOKEN')}`, 'Content-Type': 'application/json' } });
