@@ -72,14 +72,14 @@ create or replace function public.touch_updated_at() returns trigger language pl
 create trigger ride_positions_touch before update on public.ride_positions for each row execute function public.touch_updated_at();
 
 -- ============ verificación del piloto (simula antecedentes sin proveedor) ============
--- Cédulas de prueba: 1000000009 = revisión, 1000000007 = error. Cualquier otra sale limpia. NO consulta a la Policía.
+-- Piloto: todas las cédulas salen limpias. NO consulta a la Policía.
 -- Sin selfie (alt) siempre queda en revisión. Se reemplaza por la Edge Function "antecedentes" cuando haya proveedor.
 create or replace function public.verificar_piloto() returns text language plpgsql security definer set search_path = public as $$
 declare r public.identity_docs; st text;
 begin
   select * into r from public.identity_docs where user_id = auth.uid();
   if not found then return 'error'; end if;
-  st := case r.cedula when '1000000009' then 'flag' when '1000000007' then 'error' else 'clear' end;
+  st := 'clear';
   insert into public.antecedent_checks (user_id, status) values (auth.uid(), st);
   if st = 'error' then return 'error'; end if;
   update public.profiles set ver_status = case when st = 'clear' and not r.alt then 'ok' else 'review' end where id = auth.uid();
