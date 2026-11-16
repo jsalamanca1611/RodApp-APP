@@ -2,9 +2,9 @@
 /* RodApp · lógica y pantallas del prototipo */
 const lvOf=x=>{let l=0;LV.forEach((v,i)=>{if(x>=v)l=i});return l};
 function xpInfo(x){const l=lvOf(x),a=LV[l],b=LV[l+1];return{l,name:LVN[l],b,pct:b?Math.round((x-a)/(b-a)*100):100,left:b?b-x:0}}
-const xpOfN=n=>n==='Tú'?S.xp:80+(hash(n)*53)%1400;
+const xpOfN=n=>n==='Tú'?S.xp:S.xpMap&&n in S.xpMap?S.xpMap[n]:80+(hash(n)*53)%1400;
 const lchip=n=>`<span class="lchip">Nv. ${lvOf(xpOfN(n))+1}</span>`;
-const badgesOf=n=>n==='Tú'?S.badges:BADGES.filter((_,j)=>(hash(n)>>j)%3===0).slice(0,5).map(b=>b.k);
+const badgesOf=n=>n==='Tú'?S.badges:S.xpMap&&n in S.xpMap?[]:BADGES.filter((_,j)=>(hash(n)>>j)%3===0).slice(0,5).map(b=>b.k);
 const badgeSVG=(b,on,s=64)=>`<svg width="${s}" height="${s}" viewBox="0 0 64 64" role="img" aria-label="Insignia ${b.n}"><path d="M32 4l24 14v28L32 60 8 46V18z" fill="${on?b.c:'#1B2520'}" stroke="${on?'rgba(255,255,255,.35)':'#33423A'}" stroke-width="2" stroke-linejoin="round"/><g transform="translate(20 20)" fill="none" stroke="${on?'#fff':'#5B6B63'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${on?b.g:IC.lock}</g></svg>`;
 function awardRide(){const r=S.sel;if(!r||S.award)return;
  const b=BADGES.find(x=>x.k===r.lugar&&r.km>=x.km&&!S.badges.includes(x.k));
