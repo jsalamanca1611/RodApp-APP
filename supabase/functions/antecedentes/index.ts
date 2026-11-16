@@ -49,7 +49,8 @@ Deno.serve(async (req) => {
   const { data: idr } = await admin.from('identity_docs').select('cedula, ocr_ok, editado, alt').eq('user_id', user.id).maybeSingle();
   if (!idr) return json({ error: 'identidad' }, 409);
   const cedula = idr.cedula;
-  const revisar = !idr.ocr_ok || idr.editado || idr.alt;  // lectura dudosa, datos cambiados o verificación manual: lo decide una persona
+  const auto = Deno.env.get('REVISION_MODE') === 'auto';  // piloto: la lectura dudosa o los datos corregidos no bloquean; quedan marcados para auditar
+  const revisar = idr.alt || (!auto && (!idr.ocr_ok || idr.editado));  // lectura dudosa, datos cambiados o verificación manual: lo decide una persona
 
   // 1) Consentimiento vigente registrado en servidor (no basta con lo que diga el cliente).
   const { data: cons } = await admin.from('consents').select('id').eq('user_id', user.id).eq('kind', 'antec').is('revoked_at', null).limit(1);

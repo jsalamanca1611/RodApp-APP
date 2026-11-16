@@ -26,7 +26,7 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
     if(!S.consent.ubic){return openLocPrompt()}
     this.sharing=true;
     if('wakeLock' in navigator){try{this.wake=await navigator.wakeLock.request('screen')}catch(e){}}
-    if(navigator.geolocation){this.watch=navigator.geolocation.watchPosition(p=>{this.me=[p.coords.latitude,p.coords.longitude,Date.now()];this.err=null;this.push(p.coords);MapKit.draw()},
+    if(navigator.geolocation){this.watch=navigator.geolocation.watchPosition(p=>{this.me=[p.coords.latitude,p.coords.longitude,Date.now(),p.coords.heading,p.coords.speed==null?null:p.coords.speed*3.6];this.err=null;this.push(p.coords);MapKit.draw()},
       e=>{this.err=e.code===1?'denegado':e.code===2?'sin señal GPS':'tarda demasiado';this.useSim();MapKit.draw()},{enableHighAccuracy:true,maximumAge:3000,timeout:15000})}
     else{this.err='sin GPS';this.useSim()}
     if(RodAPI.live)this.join();else this.seedPeers()},
@@ -50,7 +50,7 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
       if(i===names.length-1&&q.f>.5)return;           /* el último se atrasa y deja de reportar: prueba de "rezagado" */
       q.f=Math.min(1,q.f+.004+Math.random()*.003-(i===names.length-1?.003:0));
       q.ll=[p0[0]+(d[0]-p0[0])*q.f+Math.sin(q.f*9+i)*.004,p0[1]+(d[1]-p0[1])*q.f+Math.cos(q.f*7+i)*.004];q.t=Date.now()});
-    if(this.simMe&&this.me){this.me=[this.me[0]+(Math.random()-.4)*.0004,this.me[1]+(Math.random()-.4)*.0004,Date.now()]}}};
+    if(this.simMe&&this.me){this.me=[this.me[0]+(Math.random()-.4)*.0004,this.me[1]+(Math.random()-.4)*.0004,Date.now(),null,28+Math.random()*10]}}};
 
 /* ---------- mapa: MapLibre si hay estilo configurado; si no, esquema SVG ---------- */
 const MapKit={map:null,mk:{},
@@ -65,19 +65,25 @@ const MapKit={map:null,mk:{},
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa esquemático del grupo" style="width:100%;height:100%;display:block;background:#0B120F"><path d="M${X(p0)} ${Y(p0)} Q${X(mid)} ${Y(mid)} ${X(d)} ${Y(d)}" fill="none" stroke="#2A3A32" stroke-width="6" stroke-linecap="round"/><path d="M${X(p0)} ${Y(p0)} Q${X(mid)} ${Y(mid)} ${X(d)} ${Y(d)}" fill="none" stroke="#12B76A" stroke-width="2" stroke-dasharray="3 7" stroke-linecap="round"/>
     <rect x="${X(p0)-7}" y="${Y(p0)-7}" width="14" height="14" rx="4" fill="#F5C451" stroke="#000" stroke-width="2"/><text x="${X(p0)}" y="${Y(p0)+24}" text-anchor="middle" font-size="11" fill="#F5C451" stroke="#000" stroke-width="3" paint-order="stroke">Encuentro</text>
     <path d="M${X(d)} ${Y(d)-4} l8 14 h-16z" fill="#fff"/>${peers}${Live.me?dot(Live.me,'#007AFF','Tú'):''}</svg>`},
+  DARK:{version:8,sources:{o:{type:'raster',tiles:['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png`),tileSize:256,maxzoom:19,attribution:'© OpenStreetMap © CARTO'}},layers:[{id:'o',type:'raster',source:'o'}]},
   OSM:{version:8,sources:{o:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'}},layers:[{id:'o',type:'raster',source:'o'}]},
-  async maplibre(el){let st=RodAPI.cfg.mapStyle;if(!st)return false;if(st==='osm')st=this.OSM;
+  async maplibre(el){let st=RodAPI.cfg.mapStyle;if(!st)return false;if(st==='osm')st=this.OSM;else if(st==='dark')st=this.DARK;
     try{if(!window.maplibregl){await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})}
-      const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:40}});
-      this.map.addControl(new maplibregl.NavigationControl({showCompass:false}),'top-right');
+      const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:{top:80,bottom:300,left:40,right:40}},pitch:0,attributionControl:{compact:true}});
+      this.follow=true;this.map.on('dragstart',()=>{this.follow=false});
       const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];
       const e=document.createElement('div');e.className='mkr meet';e.textContent='★';new maplibregl.Marker({element:e}).setLngLat([p0[1],p0[0]]).addTo(this.map);return true}catch(e){return false}},
   draw(){const el=$('#mapbox');if(!el)return;
-    if(this.map){const upd=(id,ll,c,l)=>{let m=this.mk[id];if(!m){const d=document.createElement('div');d.className='mkr';d.style.background=c;d.textContent=l;m=this.mk[id]=new maplibregl.Marker({element:d}).setLngLat([ll[1],ll[0]]).addTo(this.map)}else{m.setLngLat([ll[1],ll[0]])}};
-      if(Live.me){upd('me',Live.me,'#007AFF','Tú');if(!this._fit){this._fit=1;const B=this.bounds();this.map.fitBounds([[B.w,B.s],[B.e,B.n]],{padding:40,duration:0})}}Object.entries(Live.peers).forEach(([id,q])=>{upd(id,q.ll,'#2FD98D',ini(q.n));const a=Date.now()-q.t;this.mk[id].getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
+    if(this.map){
+      const mk=(id,ll,html,cls,rot)=>{let k=this.mk[id];if(!k){const d=document.createElement('div');d.className=cls;d.innerHTML=html;k=this.mk[id]=new maplibregl.Marker({element:d,rotationAlignment:'map',pitchAlignment:'viewport'}).setLngLat([ll[1],ll[0]]).addTo(this.map)}else k.setLngLat([ll[1],ll[0]]);if(rot!=null)k.setRotation(rot);return k};
+      if(Live.me){const hd=Live.me[3]!=null&&!isNaN(Live.me[3])?Live.me[3]:(this._hd||0);this._hd=hd;
+        mk('me',Live.me,'<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="rgba(0,122,255,.22)"/><path d="M22 6l11 28-11-6-11 6z" fill="#2FA8FF" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>','mkme',hd);
+        if(this.follow&&!this._busy)this.map.easeTo({center:[Live.me[1],Live.me[0]],bearing:hd,pitch:55,zoom:16.3,duration:900,padding:{top:0,bottom:240,left:0,right:0}})}
+      Object.entries(Live.peers).forEach(([id,q])=>{const k=mk(id,q.ll,`<span>${esc(ini(q.n))}</span><em>${esc(first(q.n))}</em>`,'mkp');const a=Date.now()-q.t;k.getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
     else el.innerHTML=this.svg();
+    const sp=$('#spdv');if(sp)sp.textContent=Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):'—';
     const l=$('#peers');if(l)l.innerHTML=peersHTML();const b=$('#lagban');if(b)b.innerHTML=lagHTML()},
-  leave(){if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0}}};
+  leave(){if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0;this.follow=true}}};
 
 function peerRows(){const me=Live.me,now=Date.now();
   return Object.values(Live.peers).map(q=>({n:q.n,d:me?hav(me,q.ll):null,a:now-q.t})).sort((a,b)=>(a.d==null)-(b.d==null)||a.d-b.d)}
@@ -87,17 +93,18 @@ function peersHTML(){const rows=peerRows();if(!rows.length)return `<p class="sma
 function lagHTML(){const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
   return `<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>${esc(first(out[0].n))} se quedó atrás.</b> ${out[0].a>LOST_MS?'Perdimos su señal hace más de 1 minuto.':'Está a '+fmtD(out[0].d)+'.'}</span></div>`}
 
-SCR.mapa=()=>{const r=S.sel;
-  return `<div class="scr light">${hdr('Mapa del grupo','lobby')}<div class="body" style="gap:12px;padding-top:0">
-  <div id="mapbox" class="mapbox">${Live.sharing?'':`<div class="empty" style="padding:50px 20px"><span class="ill">${I('pin',34)}</span><p class="lead">Activa tu ubicación para ver al grupo y el punto de encuentro.</p></div>`}</div>
-  <div id="lagban">${lagHTML()}</div>
-  <div class="small" style="margin:0">${esc(r.name)} · salida ${esc(r.punto)}</div>
-  <div class="grow2" style="gap:10px"><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('waze')}">Ir con Waze</a><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('gmaps')}">Ir con Google Maps</a></div>
-  ${Live.err?`<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}. Mostramos una posición de ejemplo.</span></div>`:''}
-  <div id="peers">${peersHTML()}</div>
-  <div class="banner info">${I('shield',20)}<span>Solo tu grupo ve tu ubicación, solo mientras comparte, y se apaga al terminar la rodada. En ruta, el aviso a los compañeros llega por voz.</span></div>
-  </div><div class="foot">${Live.sharing?`<button class="btn ghost" data-act="locStop">Dejar de compartir</button>`:`<button class="btn" data-act="locStart">Compartir mi ubicación</button>`}</div></div>`};
-AFTER.mapa=async()=>{if(Live.sharing){const el=$('#mapbox');const ml=await MapKit.maplibre(el);MapKit.draw();every(()=>{Live.tick();MapKit.draw()},2000)}};
+SCR.mapa=()=>{const r=S.sel,sh=Live.sharing;
+  return `<div class="scr dark mapscr"><div id="mapbox" class="mapfull">${sh?'':`<div class="empty" style="padding:90px 24px 0"><span class="ill">${I('pin',34)}</span><h2 class="t">Mira a tu grupo en el mapa</h2><p class="lead">Activa tu ubicación para verte con tus compañeros y ver el punto de encuentro.</p></div>`}</div>
+  <button class="mbtn mback" data-act="go" data-to="lobby" aria-label="Volver">${I('back',24)}</button>
+  ${sh?`<div class="spd" aria-live="off"><b id="spdv">—</b><span>km/h</span></div><button class="mbtn mrec" data-act="mapRec" aria-label="Centrar en mí">${I('pin',24)}</button>`:''}
+  <div class="msheet"><div class="grab"></div><div id="lagban">${lagHTML()}</div>
+   <div class="mhead"><div><b>${esc(r.name)}</b><span class="small" style="display:block">Salida · ${esc(r.punto)}</span></div></div>
+   <div class="grow2" style="gap:10px"><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('waze')}">Ir con Waze</a><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('gmaps')}">Google Maps</a></div>
+   ${Live.err?`<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}. Mostramos una posición de ejemplo.</span></div>`:''}
+   <div id="peers">${peersHTML()}</div>
+   <p class="small" style="margin:0">Solo tu grupo ve tu ubicación, solo mientras compartes. Se apaga al terminar la rodada.</p>
+   ${sh?`<button class="btn ghost" data-act="locStop">Dejar de compartir</button>`:`<button class="btn" data-act="locStart">Compartir mi ubicación</button>`}</div></div>`};
+AFTER.mapa=async()=>{if(Live.sharing){const el=$('#mapbox');await MapKit.maplibre(el);MapKit.draw();every(()=>{Live.tick();MapKit.draw()},2000)}};
 
 function openLocPrompt(){openLayer(`<div class="scrim" data-act="closeLayer"></div><div class="sheetp sheet" role="dialog" aria-label="Ubicación"><div class="grab"></div><h2 class="t">Comparte tu ubicación con el grupo</h2>
  <p class="lead">Solo ven tu posición los participantes de esta rodada, mientras está activa. Puedes dejar de compartir cuando quieras. El navegador te pedirá permiso.</p>
@@ -105,6 +112,7 @@ function openLocPrompt(){openLayer(`<div class="scrim" data-act="closeLayer"></d
 
 Object.assign(ACT,{
   mapa:()=>go('mapa'),
+  mapRec:()=>{MapKit.follow=true;MapKit.draw()},
   locAllow:()=>{S.consent.ubic=true;closeLayer();ACT.locStart()},
   locStart:async()=>{await Live.start();render()},
   locStop:()=>{Live.stop();render()}

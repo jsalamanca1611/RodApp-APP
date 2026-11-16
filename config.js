@@ -5,7 +5,10 @@
 window.RODAPP_CONFIG={
   supabaseUrl:'',
   anonKey:'',
-  /* Mapa (MapLibre). 'osm' = calles de OpenStreetMap, sin llave (válido para el piloto; su política de teselas no admite tráfico alto).
+  /* Mapa (MapLibre). 'dark' = mapa oscuro de CARTO sobre OpenStreetMap, sin llave; 'osm' = calles claras de OpenStreetMap. Ambos sirven para el piloto; su uso en producción con tráfico alto requiere plan o proveedor propio.
      Para producción: URL de un style.json de MapTiler, Protomaps u otro. Vacío = mapa esquemático sin teselas. */
-  mapStyle:'osm'
+  /* Revisión de cuentas. 'auto' (piloto): si la cédula se fotografió y se confirmaron nombre y número, la cuenta entra aunque el OCR haya fallado o la persona haya corregido datos;
+     queda guardado en identity_docs (editado, ocr_ok) para auditar después. 'manual': esos casos esperan a una persona. Los antecedentes con registros y la verificación sin selfie siempre esperan a una persona. */
+  revision:'auto',
+  mapStyle:'dark'
 };

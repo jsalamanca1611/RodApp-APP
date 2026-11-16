@@ -119,7 +119,7 @@ Object.assign(ACT,{
     try{await RodAPI.saveIdentity({nombre_legal:K.nombre.trim(),cedula:K.cedula,ocr_nombre:K.ocr?K.ocr.nombre:null,ocr_numero:K.ocr?K.ocr.numero:null,ocr_ok:!!K.ocrOk,editado:!!K.edited,alt:!!K.alt})}catch(e){K.antec='error';return render()}
     const r=await RodAPI.antecedentes({cedula:K.cedula,consent:{antec:true,at:new Date().toISOString()}});
     K.antec=r.status;
-    S.verStatus=r.status==='clear'?((K.ocrOk&&!K.edited&&!K.manual)?'ok':'review'):r.status==='flag'?'review':'pending';render()},
+    S.verStatus=r.status==='clear'?((RodAPI.cfg.revision==='auto'||(K.ocrOk&&!K.edited&&!K.manual))?'ok':'review'):r.status==='flag'?'review':'pending';render()},
   antecSkip:()=>{S.verStatus='pending';go('veh')},
   antecNext:()=>go('veh'),
   vehBack:()=>{S.kyc.step=S.kyc.alt?0:1;go('kyc')}
@@ -160,7 +160,7 @@ ACT.vehNext=async()=>{const v=S.veh,e={};if(!v.cc)e.cc=1;if(!v.marca)e.marca=1;i
   S.verified=S.verStatus==='ok';go('done')};
 
 /* Puerta de seguridad: sin verificación completa no se crea ni se une a rodadas. */
-const gated=()=>S.verStatus&&S.verStatus!=='ok';
+const gated=()=>S.verStatus==='review'||(S.verStatus==='pending'&&RodAPI.cfg.revision!=='auto');
 const _go=ACT.go;ACT.go=d=>{if(d.to==='crear'&&gated())return toast('Tu verificación sigue en revisión');_go(d)};
 const _join=ACT.join;ACT.join=()=>{if(gated())return toast('Tu verificación sigue en revisión');_join()};
 const _joinAsk=ACT.joinAsk;ACT.joinAsk=()=>{if(gated()){return toast('Tu verificación sigue en revisión')}_joinAsk()};

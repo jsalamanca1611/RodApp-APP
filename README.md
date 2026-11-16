@@ -18,6 +18,8 @@ En demo, una cédula que termina en **9** devuelve "en revisión" y en **7** dev
 - `ocr.js` lee número y nombre de la foto del frente con Tesseract.js (se descarga de jsDelivr al usarlo). Si la lectura falla dos veces, la persona escribe sus datos y la cuenta pasa a revisión humana. Si cambia algo de lo leído, también.
 - Se guardan nombre legal, cédula y fotos (tabla `identity_docs` y bucket `kyc`, solo accesibles al servidor) para incidentes de seguridad. Plazo de conservación: por definir con un abogado.
 - **El OCR lee, no autentica.** No detecta cédulas falsas ni compara la cara de la selfie con la del documento. Eso lo hace un proveedor de verificación de identidad o una persona revisando las fotos en Supabase.
+- `revision:'auto'` en `config.js` y `supabase secrets set REVISION_MODE=auto`: modo piloto. Entra quien fotografíe la cédula y confirme sus datos; `identity_docs.editado` y `ocr_ok` permiten auditar después. Cambiar a `manual` cuando haya quien revise.
+- Aprobar a mano: `update profiles set ver_status='ok' where id='<uuid>';` en el SQL Editor de Supabase.
 - Piloto sin proveedor: `supabase secrets set ANTEC_MODE=simulado`. La función aprueba cualquier cédula leída sin cambios (termina en 9 = revisión, en 7 = error). No consulta a la Policía.
 
 ## Backend (Supabase)
