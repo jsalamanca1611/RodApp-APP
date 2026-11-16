@@ -14,33 +14,50 @@ S.kyc=Object.assign(S.kyc,{cedula:'',nombre:'',ocr:null,ocrOk:false,ocrFails:0,m
 
 /* ---------- cámara ---------- */
 const Cam=(()=>{
-  let stream=null,kind=null;
+  let stream=null,kind=null,busy=false;
   const stop=()=>{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}};
-  /* Revisa luz y nitidez en una miniatura. Los umbrales son hipótesis: calibrar con fotos reales de cédulas. */
-  function quality(cv){const w=240,h=Math.round(cv.height*w/cv.width),c=document.createElement('canvas');c.width=w;c.height=h;
+  /* Luz y nitidez sobre la foto ya recortada (640 px de ancho). Umbrales calibrados con una foto borrosa real (≈70) y una sintética nítida (≈860);
+     recalibrar con más cédulas reales. El valor se imprime en consola: window.__camq. */
+  function quality(cv){const w=640,h=Math.round(cv.height*w/cv.width),c=document.createElement('canvas');c.width=w;c.height=h;
     const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(cv,0,0,w,h);const d=x.getImageData(0,0,w,h).data;
     const g=new Float32Array(w*h);let sum=0;for(let i=0;i<w*h;i++){g[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];sum+=g[i]}
     const mean=sum/(w*h);let s=0,s2=0,n=0;
     for(let y=1;y<h-1;y++)for(let i=1;i<w-1;i++){const k=y*w+i,l=4*g[k]-g[k-1]-g[k+1]-g[k-w]-g[k+w];s+=l;s2+=l*l;n++}
-    const v=s2/n-(s/n)*(s/n);return{mean,sharp:v}}
-  function verdict(q){if(q.mean<40)return'Muy oscura. Busca más luz.';if(q.mean>225)return'Demasiada luz o reflejo. Cambia el ángulo.';if(q.sharp<8)return'Salió borrosa. Sostén firme el teléfono.';return null}
+    const v=s2/n-(s/n)*(s/n);window.__camq={mean,sharp:v};return{mean,sharp:v}}
+  const MIN_SHARP=()=>kind==='selfie'?30:80;
+  function verdict(q){if(q.mean<45)return'Muy oscura. Busca más luz.';if(q.mean>225)return'Demasiada luz o reflejo. Cambia el ángulo.';if(q.sharp<MIN_SHARP())return kind==='selfie'?'Salió borrosa. Sostén firme el teléfono.':'Salió borrosa. Acerca la cédula, espera a que enfoque y sostén firme.';return null}
   async function open(k){kind=k;const selfie=k==='selfie';
     const body=`<div class="camwrap"><video id="camv" playsinline muted autoplay></video><span class="camguide ${selfie?'oval':''}"></span>
-      <p class="camhint">${selfie?'Centra tu cara. Sin casco, gorra ni gafas oscuras.':'Encaja la cédula en el recuadro y evita reflejos.'}</p></div>
-      <div class="camfoot"><button class="btn ghost sm" data-act="camCancel">Cancelar</button><button class="btn" data-act="camShot">Tomar foto</button></div>`;
+      <p class="camhint">${selfie?'Centra tu cara. Sin casco, gorra ni gafas oscuras.':'Llena el recuadro con la cédula, con buena luz y sin reflejos. Espera a que enfoque.'}</p></div>
+      <div class="camfoot"><button class="btn ghost sm" data-act="camCancel">Cancelar</button><button class="btn" data-act="camShot" id="camshot">Tomar foto</button></div>`;
     openLayer(`<div class="camfull" role="dialog" aria-label="${selfie?'Tomar selfie':'Tomar foto de la cédula'}">${body}</div>`);
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return fallback('Tu navegador no deja usar la cámara aquí. Sube una foto.');
-    try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:selfie?'user':{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
-      const v=$('#camv');if(!v){stop();return}v.srcObject=stream;await v.play().catch(()=>{})}
+    try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:selfie?'user':{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+      const v=$('#camv');if(!v){stop();return}v.srcObject=stream;await v.play().catch(()=>{});
+      /* Enfoque continuo y exposición automática donde el navegador lo permita (Chrome Android). */
+      try{const t=stream.getVideoTracks()[0],c=t.getCapabilities?t.getCapabilities():{};const adv=[];
+        if(c.focusMode&&c.focusMode.includes('continuous'))adv.push({focusMode:'continuous'});
+        if(c.exposureMode&&c.exposureMode.includes('continuous'))adv.push({exposureMode:'continuous'});
+        if(adv.length)await t.applyConstraints({advanced:adv})}catch(e){}}
     catch(e){fallback(e&&e.name==='NotAllowedError'?'No diste permiso a la cámara. Actívalo en el candado del navegador o sube una foto.':'No encontramos una cámara disponible. Sube una foto.')}}
   function fallback(msg){const h=$('.camwrap');if(!h)return;h.innerHTML=`<div class="camerr">${I('cam',34)}<p>${esc(msg)}</p></div>`;
     const f=$('.camfoot');f.innerHTML=`<button class="btn ghost sm" data-act="camCancel">Cancelar</button><label class="btn upl">Subir foto<input type="file" accept="image/*" ${kind==='selfie'?'capture="user"':'capture="environment"'} id="camfile" hidden></label>`;
     $('#camfile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;const bmp=await createImageBitmap(file).catch(()=>null);if(!bmp)return done(null,'No pudimos abrir esa imagen.');
       const cv=document.createElement('canvas');const r=Math.min(1,1280/bmp.width);cv.width=Math.round(bmp.width*r);cv.height=Math.round(bmp.height*r);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);finish(cv)})}
-  function shot(){const v=$('#camv');if(!v||!v.videoWidth)return;const cv=document.createElement('canvas');cv.width=v.videoWidth;cv.height=v.videoHeight;
-    const x=cv.getContext('2d');if(kind==='selfie'){x.translate(cv.width,0);x.scale(-1,1)}x.drawImage(v,0,0);finish(cv)}
-  function finish(cv){const q=quality(cv),bad=verdict(q);if(bad)return done(null,bad);
-    cv.toBlob(b=>done(b,null),'image/jpeg',.85)}
+  /* Recorta el fotograma al recuadro guía (la cédula ocupa más píxeles útiles) y deja 5 % de margen. */
+  function frame(v){const vw=v.videoWidth,vh=v.videoHeight,wrap=$('.camwrap').getBoundingClientRect(),g=$('.camguide').getBoundingClientRect();
+    let sx=0,sy=0,sw=vw,sh=vh;
+    if(kind!=='selfie'&&wrap.width&&g.width){const sc=Math.max(wrap.width/vw,wrap.height/vh),ox=(vw*sc-wrap.width)/2,oy=(vh*sc-wrap.height)/2,pad=.05;
+      const gx=(g.left-wrap.left+ox)/sc,gy=(g.top-wrap.top+oy)/sc,gw=g.width/sc,gh=g.height/sc;
+      sx=Math.max(0,gx-gw*pad);sy=Math.max(0,gy-gh*pad);sw=Math.min(vw-sx,gw*(1+2*pad));sh=Math.min(vh-sy,gh*(1+2*pad))}
+    const cv=document.createElement('canvas');cv.width=Math.round(sw);cv.height=Math.round(sh);const x=cv.getContext('2d');
+    if(kind==='selfie'){x.translate(cv.width,0);x.scale(-1,1)}x.drawImage(v,sx,sy,sw,sh,0,0,cv.width,cv.height);return cv}
+  /* Ráfaga: 5 fotogramas separados 130 ms; se queda con el más nítido. Así la mano temblando o el enfoque tardío pesan menos. */
+  async function shot(){const v=$('#camv');if(!v||!v.videoWidth||busy)return;busy=true;const bt=$('#camshot');if(bt){bt.disabled=true;bt.textContent='Sostén firme…'}
+    let best=null,bq=-1;for(let i=0;i<5;i++){const cv=frame(v),q=quality(cv);if(q.sharp>bq){bq=q.sharp;best=cv}await new Promise(r=>setTimeout(r,130))}
+    busy=false;finish(best)}
+  function finish(cv){const q=quality(cv),bad=window.__CAM_NOQ?null:verdict(q);if(bad)return done(null,bad);
+    cv.toBlob(b=>done(b,null),'image/jpeg',.92)}
   function done(blob,err){const k=kind;stop();closeLayer();const K=S.kyc;
     if(err){K[k]='error';K.msg=err;return render()}
     K[k]='loading';render();

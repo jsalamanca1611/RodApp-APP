@@ -385,9 +385,11 @@ button.prow{width:100%;text-align:left}
 html,body{height:100%;margin:0;background:#050806}
 #proto{height:100vh;height:100dvh;background:#050806}
 #proto .stage{display:flex;align-items:center;justify-content:center;gap:0;padding:0;height:100%}
-#proto .phone{width:100%;max-width:430px;height:100%;border:0;border-radius:0;box-shadow:none}
-@media (min-width:600px){
-  #proto .phone{height:min(920px,calc(100% - 32px));border-radius:28px;border:1px solid #1A211E;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+/* Celular: la app ocupa TODA la pantalla (sin franjas laterales ni bordes), sea cual sea el ancho CSS. */
+#proto .phone{width:100%;max-width:none;height:100%;border:0;border-radius:0;box-shadow:none}
+/* Computador (puntero preciso y ventana ancha): marco centrado tipo celular. */
+@media (min-width:700px) and (hover:hover) and (pointer:fine){
+  #proto .phone{max-width:430px;height:min(920px,calc(100% - 32px));border-radius:28px;border:1px solid #1A211E;box-shadow:0 30px 80px rgba(0,0,0,.6)}
 }
 
 /* ===== Clubes ===== */
@@ -421,8 +423,8 @@ input[type=range]{accent-color:var(--green);min-height:32px}
 .camfull{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;z-index:30}
 .camwrap{position:relative;flex:1;overflow:hidden;background:#05080A}
 .camwrap video{width:100%;height:100%;object-fit:cover}
-.camguide{position:absolute;left:8%;right:8%;top:30%;aspect-ratio:1.6;border:3px solid rgba(255,255,255,.85);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.45);pointer-events:none}
-.camguide.oval{left:16%;right:16%;top:14%;aspect-ratio:auto;height:62%;border-radius:50%}
+.camguide{position:absolute;left:4%;right:4%;top:24%;aspect-ratio:1.586;border:3px solid rgba(255,255,255,.85);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.45);pointer-events:none}
+.camguide.oval{left:15%;right:15%;top:14%;height:auto;aspect-ratio:4/5;border-radius:50%}
 .camhint{position:absolute;left:16px;right:16px;bottom:14px;margin:0;text-align:center;font-size:14px;color:#fff;text-shadow:0 1px 4px #000}
 .camfoot{display:flex;gap:10px;padding:14px 18px 22px;background:#000}
 .camfoot .btn{flex:1}
@@ -456,3 +458,5 @@ input[type=range]{accent-color:var(--green);min-height:32px}
 .mkp em{font-style:normal;font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000,0 0 6px #000}
 .mkr.meet{background:#F5C451}
 .maplibregl-ctrl-attrib{background:rgba(0,0,0,.55)!important}.maplibregl-ctrl-attrib a{color:#9DB0A6!important}
+
+.camfoot .btn.ghost{color:#fff;box-shadow:inset 0 0 0 1.5px #3A4A41}
