@@ -74,6 +74,11 @@ class H(BaseHTTPRequestHandler):
             DB['identity_docs'][me]=js; return s.out(201)
         if tb=='profiles':
             if method=='GET': r=[DB['profiles'][me]] if me in DB['profiles'] else []; return s.out(200,r)
+            if method=='PATCH':
+                if any(k not in('nombre','exp','cc','tipo','marca','placa') for k in js): raise E(403,'permission denied for table profiles','42501')
+                if me not in DB['profiles']: return s.out(200,[])
+                DB['profiles'][me].update(js); return s.out(200,[DB['profiles'][me]])
+            if method=='POST' and 'on_conflict' in q and 'id' in js: raise E(403,'permission denied for table profiles','42501')   # el upsert incluye id y no hay UPDATE sobre id
             if method=='POST': DB['profiles'].setdefault(me,{'ver_status':'pending','xp':0}).update({k:v for k,v in js.items() if k in('id','nombre','exp','cc','tipo','marca','placa')}); return s.out(201)
         rows=DB[tb]
         if method=='GET':

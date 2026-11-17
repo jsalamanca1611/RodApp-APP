@@ -54,5 +54,9 @@ const RodAPI=(()=>{
       const r=await rest('/profiles?id=eq.'+ses.user.id+'&select=nombre,exp,cc,placa,marca,ver_status,xp');return r[0]||null},
     async signOut(){const t=ses&&ses.access_token;ses=null;try{localStorage.removeItem('rodapp.ses');sessionStorage.removeItem('rodapp.ses')}catch(e){}
       if(live&&t)fetch(C.supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:C.anonKey,Authorization:'Bearer '+t}}).catch(()=>{})},
-    async saveProfile(p){if(!live)return;await call('/rest/v1/profiles?on_conflict=id',{method:'POST',headers:hdr(true,{Prefer:'resolution=merge-duplicates'}),body:JSON.stringify(p)})}
+    /* Actualiza la fila que crea el trigger al registrarse (PATCH, solo columnas permitidas); si no existe, la crea. */
+    async saveProfile(p){if(!live)return;const id=p.id||(ses&&ses.user&&ses.user.id),d={};['nombre','exp','cc','tipo','marca','placa'].forEach(k=>{if(p[k]!=null&&p[k]!=='')d[k]=p[k]});
+      const r=await call('/rest/v1/profiles?id=eq.'+id,{method:'PATCH',headers:hdr(true,{Prefer:'return=representation'}),body:JSON.stringify(d)});
+      if(Array.isArray(r)&&r.length)return;
+      await call('/rest/v1/profiles',{method:'POST',headers:hdr(true,{Prefer:'return=minimal'}),body:JSON.stringify(Object.assign({id},d))})}
   }})();

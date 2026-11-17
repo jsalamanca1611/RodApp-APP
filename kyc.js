@@ -173,7 +173,7 @@ ACT.login=async()=>{if(!RodAPI.live)return _login();
 const _veh=ACT.vehNext;
 ACT.vehNext=async()=>{const v=S.veh,e={};if(!v.cc)e.cc=1;if(!v.marca)e.marca=1;if(!/^[A-Z]{3}\d{2}[A-Z]$/.test(v.placa))e.placa=1;S.errs=e;if(Object.keys(e).length)return render();
   try{await RodAPI.saveProfile({id:RodAPI.session()&&RodAPI.session().user&&RodAPI.session().user.id,nombre:S.user.nombre,exp:S.user.exp,cc:v.cc,tipo:v.tipo,marca:v.marca,placa:v.placa})}
-  catch(err){toast('No pudimos guardar tu perfil. Intenta de nuevo.');return}
+  catch(err){console.error('saveProfile',err);const m=err&&err.message?String(err.message).slice(0,80):'';toast('No pudimos guardar tu perfil'+(m?': '+m:'. Intenta de nuevo.')+(err&&err.status?' ('+err.status+')':''));return}
   S.verified=S.verStatus==='ok';go('done')};
 
 /* Puerta de seguridad: sin verificación completa no se crea ni se une a rodadas. */
