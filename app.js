@@ -375,7 +375,7 @@ function showAlert(k){const a=ALERTS[k],R=S.run;R.alerts.push({k,t:Date.now()});
   <button class="cancel" data-act="cancelAlert">Fue un error · Cancelar alerta</button></div>`;
  clearTimeout(showAlert.t);clearTimeout(showAlert.t2);
  /* Estados del flujo real: enviando -> entregada. Aquí la entrega se simula; con backend se confirma por servidor. */
- showAlert.t2=setTimeout(()=>{const h=$('#alh'),p=$('#alp');if(h)h.textContent='Alerta entregada';if(p)p.textContent='Llegó a '+(RIDERS.length-1)+' compañeros. Se cierra sola en unos segundos.'},1200);
+ showAlert.t2=setTimeout(()=>{if(window.__realAlert&&window.__realAlert())return;const h=$('#alh'),p=$('#alp');if(h)h.textContent='Alerta entregada';if(p)p.textContent='Llegó a '+(RIDERS.length-1)+' compañeros. Se cierra sola en unos segundos.'},1200);
  showAlert.t=setTimeout(hideOv,5000)}
 
 /* ----- resumen ----- */

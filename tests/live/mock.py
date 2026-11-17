@@ -2,8 +2,8 @@ import json, re, sys, uuid, time, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, unquote
 from email.utils import formatdate
-DB={'profiles':{}, 'identity_docs':{}, 'consents':[], 'rides':[], 'ride_participants':[], 'ride_messages':[], 'ride_positions':[]}
-USERS={}; TOK={}; NID={'rides':0,'ride_messages':0}; LOCK=threading.Lock()
+DB={'profiles':{}, 'identity_docs':{}, 'consents':[], 'rides':[], 'ride_participants':[], 'ride_messages':[], 'ride_positions':[], 'ride_alerts':[]}
+USERS={}; TOK={}; NID={'rides':0,'ride_messages':0,'ride_alerts':0}; LOCK=threading.Lock()
 def now_iso(): return time.strftime('%Y-%m-%dT%H:%M:%S',time.gmtime())+'.000000+00:00'
 def verified(u): return DB['profiles'].get(u,{}).get('ver_status')=='ok'
 def member(rid,u): return verified(u) and any(p['ride_id']==rid and p['user_id']==u for p in DB['ride_participants'])
@@ -81,10 +81,10 @@ class H(BaseHTTPRequestHandler):
             if tb=='rides':
                 for x in r: x['ride_participants']=[{k:v for k,v in pp.items() if k in('user_id','nombre','xp','listo')} for pp in DB['ride_participants'] if pp['ride_id']==x['id']]
                 r.sort(key=lambda x:-x['id'])
-            if tb in('ride_messages','ride_positions'):
+            if tb in('ride_messages','ride_positions','ride_alerts'):
                 rid=int(dict(flt)['ride_id'].split('.')[1]);
                 if not member(rid,me): r=[]
-            if tb=='ride_messages': r.sort(key=lambda x:x['id'])
+            if tb in('ride_messages','ride_alerts'): r.sort(key=lambda x:x['id'])
             if 'limit' in q: r=r[:int(q['limit'][0])]
             return s.out(200,r)
         if method=='POST':
@@ -101,6 +101,9 @@ class H(BaseHTTPRequestHandler):
             if tb=='ride_messages':
                 if not member(js['ride_id'],me): raise E(403,'rls','42501')
                 NID['ride_messages']+=1; row=dict(js,id=NID['ride_messages'],user_id=me,created_at=now_iso()); rows.append(row); return s.out(201,[row])
+            if tb=='ride_alerts':
+                if not member(js['ride_id'],me): raise E(403,'rls','42501')
+                NID['ride_alerts']+=1; row=dict(js,id=NID['ride_alerts'],user_id=me,created_at=now_iso()); rows.append(row); return s.out(201)
             if tb=='ride_positions':
                 if not member(js['ride_id'],me): raise E(403,'rls','42501')
                 js=dict(js,user_id=me,updated_at=now_iso())
