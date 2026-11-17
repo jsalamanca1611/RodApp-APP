@@ -50,7 +50,7 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
 
 /* ---------- mapa: MapLibre si hay estilo configurado; si no, esquema SVG ---------- */
 const MapKit={map:null,mk:{},
-  bounds(){const pts=[];if(Live.me)pts.push(Live.me);Object.values(Live.peers).forEach(p=>pts.push(p.ll));const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];pts.push(p0,DEST_LL[r.zona]||DEST_LL.Norte);
+  bounds(){const pts=[];if(Live.me)pts.push(Live.me);Object.values(Live.peers).forEach(p=>pts.push(p.ll));const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];pts.push(p0);if(pts.length<2)pts.push(DEST_LL[r.zona]||DEST_LL.Norte);
     const la=pts.map(p=>p[0]),lo=pts.map(p=>p[1]),pad=.01;return{n:Math.max(...la)+pad,s:Math.min(...la)-pad,e:Math.max(...lo)+pad,w:Math.min(...lo)-pad}},
   svg(){const B=this.bounds(),W=360,H=300,r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0],d=DEST_LL[r.zona]||DEST_LL.Norte;
     const k=Math.cos(((B.n+B.s)/2)*Math.PI/180),sx=W/((B.e-B.w)*k),sy=H/(B.n-B.s),s=Math.min(sx,sy)*.9,ox=(W-(B.e-B.w)*k*s)/2,oy=(H-(B.n-B.s)*s)/2;
@@ -62,14 +62,15 @@ const MapKit={map:null,mk:{},
     <rect x="${X(p0)-7}" y="${Y(p0)-7}" width="14" height="14" rx="4" fill="#F5C451" stroke="#000" stroke-width="2"/><text x="${X(p0)}" y="${Y(p0)+24}" text-anchor="middle" font-size="11" fill="#F5C451" stroke="#000" stroke-width="3" paint-order="stroke">Encuentro</text>
     <path d="M${X(d)} ${Y(d)-4} l8 14 h-16z" fill="#fff"/>${peers}${Live.me?dot(Live.me,'#007AFF','Tú'):''}</svg>`},
   DARK:{version:8,sources:{o:{type:'raster',tiles:['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png`),tileSize:256,maxzoom:19,attribution:'© OpenStreetMap © CARTO'}},layers:[{id:'o',type:'raster',source:'o'}]},
+  VOY:{version:8,sources:{o:{type:'raster',tiles:['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png`),tileSize:256,maxzoom:19,attribution:'© OpenStreetMap © CARTO'}},layers:[{id:'o',type:'raster',source:'o'}]},
   OSM:{version:8,sources:{o:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'}},layers:[{id:'o',type:'raster',source:'o'}]},
-  async maplibre(el){let st=RodAPI.cfg.mapStyle;if(!st)return false;if(st==='osm')st=this.OSM;else if(st==='dark')st=this.DARK;
+  async maplibre(el){let st=RodAPI.cfg.mapStyle;if(!st)return false;if(st==='osm')st=this.OSM;else if(st==='dark')st=this.DARK;else if(st==='voyager')st=this.VOY;
     try{if(!window.maplibregl){await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='assets/vendor/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='assets/vendor/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})}
-      const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:{top:80,bottom:300,left:40,right:40}},pitch:0,attributionControl:{compact:true}});
+      if(this.map){try{this.map.remove()}catch(e){}}this.mk={};this._sig=null;clearTimeout(this._bad);const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14},pitch:0,attributionControl:{compact:true}});
       this.follow=true;this.map.on('dragstart',()=>{this.follow=false});
       this._ok=false;const mp=this.map;
       mp.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata')this._ok=true});   /* llegó al menos un mosaico */
-      this._bad=setTimeout(()=>{if(!this._ok)this.fallback()},8000);
+      this._bad=setTimeout(()=>{if(this._ok||!this.map)return;try{this.map.setStyle(this.OSM)}catch(e){}this._bad=setTimeout(()=>{if(!this._ok)this.fallback()},6000)},5000);   /* si Carto no responde, prueba OpenStreetMap; si tampoco, esquema SVG */
       const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];
       const e=document.createElement('div');e.className='mkr meet';e.textContent='★';new maplibregl.Marker({element:e}).setLngLat([p0[1],p0[0]]).addTo(this.map);return true}catch(e){return false}},
   draw(){const el=$('#mapbox');if(!el)return;
@@ -77,7 +78,8 @@ const MapKit={map:null,mk:{},
       const mk=(id,ll,html,cls,rot)=>{let k=this.mk[id];if(!k){const d=document.createElement('div');d.className=cls;d.innerHTML=html;k=this.mk[id]=new maplibregl.Marker({element:d,rotationAlignment:'map',pitchAlignment:'viewport'}).setLngLat([ll[1],ll[0]]).addTo(this.map)}else k.setLngLat([ll[1],ll[0]]);if(rot!=null)k.setRotation(rot);return k};
       if(Live.me){const hd=Live.me[3]!=null&&!isNaN(Live.me[3])?Live.me[3]:(this._hd||0);this._hd=hd;
         mk('me',Live.me,'<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="rgba(0,122,255,.22)"/><path d="M22 6l11 28-11-6-11 6z" fill="#2FA8FF" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>','mkme',hd);
-        if(this.follow&&!this._busy)this.map.easeTo({center:[Live.me[1],Live.me[0]],bearing:hd,pitch:55,zoom:16.3,duration:900,padding:{top:0,bottom:240,left:0,right:0}})}
+        if(this.follow&&!this._busy&&!(S.lobby&&!S.lobby.started))this.map.easeTo({center:[Live.me[1],Live.me[0]],bearing:hd,pitch:55,zoom:16.3,duration:900,padding:{top:0,bottom:240,left:0,right:0}})}
+      if(S.lobby&&!S.lobby.started&&this.follow){const sig=Object.keys(Live.peers).length+(Live.me?'m':'');if(sig!==this._sig){this._sig=sig;const B=this.bounds();try{this.map.fitBounds([[B.w,B.s],[B.e,B.n]],{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14,duration:700})}catch(e){}}}
       Object.entries(Live.peers).forEach(([id,q])=>{const k=mk(id,q.ll,`<span>${esc(ini(q.n))}</span><em>${esc(first(q.n))}</em>`,'mkp');const a=Date.now()-q.t;k.getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
     else el.innerHTML=this.svg();
     const sp=$('#spdv');if(sp)sp.textContent=Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):'—';
