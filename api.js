@@ -32,9 +32,13 @@ const RodAPI=(()=>{
       const b=await call('/auth/v1/token?grant_type=password',{method:'POST',headers:hdr(),body:JSON.stringify({email,password:pass})});keep(b);return b},
     /* Foto de cédula/selfie a un bucket PRIVADO (kyc). La política RLS solo deja escribir en la carpeta del propio usuario. */
     async uploadKyc(kind,blob){if(!live){await wait(300);return{path:'demo/'+kind}}
-      const uid=ses&&ses.user&&ses.user.id;const p=`${uid}/${kind}.jpg`;
-      const r=await fetch(`${C.supabaseUrl}/storage/v1/object/kyc/${p}`,{method:'POST',headers:{apikey:C.anonKey,Authorization:'Bearer '+ses.access_token,'Content-Type':'image/jpeg','x-upsert':'true'},body:blob});
-      if(!r.ok)throw new Error('upload');return{path:p}},
+      const uid=ses&&ses.user&&ses.user.id;if(!uid)throw new Error('sin sesión');
+      /* Nombre único por foto y sin upsert: así solo hace falta el permiso INSERT en la carpeta propia (el upsert exige además SELECT, que no se da a los usuarios). */
+      const p=`${uid}/${kind}-${Date.now()}.jpg`;
+      const send=()=>fetch(`${C.supabaseUrl}/storage/v1/object/kyc/${p}`,{method:'POST',headers:{apikey:C.anonKey,Authorization:'Bearer '+ses.access_token,'Content-Type':'image/jpeg'},body:blob});
+      let r=await send();if(r.status===401&&ses.refresh_token){await refresh();r=await send()}
+      if(!r.ok){let m='';try{const j=await r.json();m=j.message||j.error||''}catch(e){}throw new Error((m||'error')+' ('+r.status+')')}
+      return{path:p}},
     /* Devuelve {status:'clear'|'flag'|'error'}. Solo estado: el detalle no se guarda. */
     async antecedentes({cedula,consent}){
       if(!live){await wait(1600);const c=String(cedula);return{status:'clear',demo:true}}

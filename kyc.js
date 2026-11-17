@@ -66,7 +66,7 @@ const Cam=(()=>{
         if(o&&o.numero){K.ocr=o;K.ocrOk=!!o.ok;K.cedula=o.numero;K.nombre=o.nombre||K.nombre||'';K.edited=false;K.front='ok'}
         else{K.ocrFails=(K.ocrFails||0)+1;K.front='error';K.msg=K.ocrFails>=2?'No pudimos leerla. Puedes escribir tus datos; una persona los revisará.':'No pudimos leer tu cédula. Busca más luz, sin reflejos, y encaja todo el documento.';if(K.ocrFails>=2){K.manual=true;K.ocrOk=false}}
         return render()}
-      later(()=>{K[k]='ok';render()},500)}).catch(()=>{K[k]='error';K.msg='No pudimos subir la foto. Revisa tu conexión.';render()})}
+      later(()=>{K[k]='ok';render()},500)}).catch(e=>{console.error('uploadKyc',e);K[k]='error';K.msg=e&&/\(\d{3}\)/.test(e.message||'')?'No pudimos guardar la foto: '+String(e.message).slice(0,80):'No pudimos subir la foto. Revisa tu conexión.';render()})}
   return{open,stop,shot,cancel:()=>{stop();closeLayer()}}})();
 const _closeLayer=closeLayer;closeLayer=function(){Cam.stop();_closeLayer()};
 
