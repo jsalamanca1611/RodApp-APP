@@ -120,7 +120,7 @@ async function fetchPeers(){if(busyF)return;busyF=true;
 Live.join=async function(){};                /* sin canal Realtime: se usa sondeo (solo rodadas reales) */
 Live.push=function(){};                      /* el envío ocurre en tick, cada 2 s */
 const _tickSim=Live.tick;
-Live.tick=function(){if(S.sel&&S.sel.sim)return _tickSim.call(this);if(!this.sharing)return;sendPos();fetchPeers()};   /* rodadas reales: nunca compañeros simulados */
+Live.tick=function(){if(S.sel&&S.sel.sim)return _tickSim.call(this);if(!this.sharing){fetchPeers();return}sendPos();fetchPeers()};   /* rodadas reales: nunca compañeros simulados */
 const _stop=Live.stop;Live.stop=function(){const was=this.sharing,id=this.rideId(),sim=S.sel&&S.sel.sim;_stop.call(this);warned=false;
   if(was&&id&&!sim)rest('/ride_positions?ride_id=eq.'+id+'&user_id=eq.'+uid(),'DELETE',null,'return=minimal').catch(()=>{})};
 

@@ -64,9 +64,12 @@ const MapKit={map:null,mk:{},
   DARK:{version:8,sources:{o:{type:'raster',tiles:['a','b','c','d'].map(s=>`https://${s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png`),tileSize:256,maxzoom:19,attribution:'© OpenStreetMap © CARTO'}},layers:[{id:'o',type:'raster',source:'o'}]},
   OSM:{version:8,sources:{o:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'}},layers:[{id:'o',type:'raster',source:'o'}]},
   async maplibre(el){let st=RodAPI.cfg.mapStyle;if(!st)return false;if(st==='osm')st=this.OSM;else if(st==='dark')st=this.DARK;
-    try{if(!window.maplibregl){await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})}
+    try{if(!window.maplibregl){await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='assets/vendor/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='assets/vendor/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})}
       const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:{top:80,bottom:300,left:40,right:40}},pitch:0,attributionControl:{compact:true}});
       this.follow=true;this.map.on('dragstart',()=>{this.follow=false});
+      this._ok=false;const mp=this.map;
+      mp.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata')this._ok=true});   /* llegó al menos un mosaico */
+      this._bad=setTimeout(()=>{if(!this._ok)this.fallback()},8000);
       const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];
       const e=document.createElement('div');e.className='mkr meet';e.textContent='★';new maplibregl.Marker({element:e}).setLngLat([p0[1],p0[0]]).addTo(this.map);return true}catch(e){return false}},
   draw(){const el=$('#mapbox');if(!el)return;
@@ -79,7 +82,8 @@ const MapKit={map:null,mk:{},
     else el.innerHTML=this.svg();
     const sp=$('#spdv');if(sp)sp.textContent=Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):'—';
     const l=$('#peers');if(l)l.innerHTML=peersHTML();const b=$('#lagban');if(b)b.innerHTML=lagHTML()},
-  leave(){if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0;this.follow=true}}};
+  fallback(){if(!this.map||this._ok)return;try{this.map.remove()}catch(e){}this.map=null;this.mk={};const el=$('#mapbox');if(el){const keep=el.querySelector('.empty');el.innerHTML=this.svg()}},
+  leave(){clearTimeout(this._bad);this._bad=null;if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0;this.follow=true}}};
 
 function peerRows(){const me=Live.me,now=Date.now();
   return Object.values(Live.peers).map(q=>({n:q.n,d:me?hav(me,q.ll):null,a:now-q.t})).sort((a,b)=>(a.d==null)-(b.d==null)||a.d-b.d)}
@@ -90,17 +94,19 @@ function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().f
   return `<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>${esc(first(out[0].n))} se quedó atrás.</b> ${out[0].a>LOST_MS?'Perdimos su señal hace más de 1 minuto.':'Está a '+fmtD(out[0].d)+'.'}</span></div>`}
 
 SCR.mapa=()=>{const r=S.sel,sh=Live.sharing;
-  return `<div class="scr dark mapscr"><div id="mapbox" class="mapfull">${sh?'':`<div class="empty" style="padding:90px 24px 0"><span class="ill">${I('pin',34)}</span><h2 class="t">Mira a tu grupo en el mapa</h2><p class="lead">Activa tu ubicación para verte con tus compañeros y ver el punto de encuentro.</p></div>`}</div>
+  return `<div class="scr dark mapscr"><div id="mapbox" class="mapfull"></div>
   <button class="mbtn mback" data-act="go" data-to="lobby" aria-label="Volver">${I('back',24)}</button>
   ${sh?`<div class="spd" aria-live="off"><b id="spdv">—</b><span>km/h</span></div><button class="mbtn mrec" data-act="mapRec" aria-label="Centrar en mí">${I('pin',24)}</button>`:''}
   <div class="msheet"><div class="grab"></div><div id="lagban">${lagHTML()}</div>
    <div class="mhead"><div><b>${esc(r.name)}</b><span class="small" style="display:block">Salida · ${esc(r.punto)}</span></div></div>
    <div class="grow2" style="gap:10px"><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('waze')}">Ir con Waze</a><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('gmaps')}">Google Maps</a></div>
    ${Live.err?`<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}. Mostramos una posición de ejemplo.</span></div>`:''}
+   ${sh?'':`<p class="small" style="margin:0;color:#9DB0A6">Ves el punto de encuentro (★). Comparte tu ubicación para verte con el grupo.</p>`}
    <div id="peers">${peersHTML()}</div>
    <p class="small" style="margin:0">Solo tu grupo ve tu ubicación, solo mientras compartes. Se apaga al terminar la rodada.</p>
    ${sh?`<button class="btn ghost" data-act="locStop">Dejar de compartir</button>`:`<button class="btn" data-act="locStart">Compartir mi ubicación</button>`}</div></div>`};
-AFTER.mapa=async()=>{if(Live.sharing){const el=$('#mapbox');await MapKit.maplibre(el);MapKit.draw();every(()=>{Live.tick();MapKit.draw()},2000)}};
+AFTER.mapa=async()=>{const el=$('#mapbox');if(S.sel&&S.sel.sim&&!Live.sharing){SimBots.init(S.sel);Live.peers=SimBots.peers(S.sel)}
+  const ok=await MapKit.maplibre(el);if(!ok)el.innerHTML=MapKit.svg();MapKit.draw();every(()=>{if(S.sel&&S.sel.sim&&!Live.sharing)Live.peers=SimBots.peers(S.sel);Live.tick();MapKit.draw()},2000)};
 
 function openLocPrompt(){openLayer(`<div class="scrim" data-act="closeLayer"></div><div class="sheetp sheet" role="dialog" aria-label="Ubicación"><div class="grab"></div><h2 class="t">Comparte tu ubicación con el grupo</h2>
  <p class="lead">Solo ven tu posición los participantes de esta rodada, mientras está activa. Puedes dejar de compartir cuando quieras. El navegador te pedirá permiso.</p>
