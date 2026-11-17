@@ -291,7 +291,7 @@ SCR.detalle=()=>{const r=S.sel||S.rides[0];const c=cuposOf(r);const joined=r.par
 
 /* ----- lobby ----- */
 function initLobby(host){
-  const r=S.sel;const ppl=r.part.map((n,i)=>({n,st:n==='Tú'?'conf':(i===0?'ready':'conf')}));
+  const r=S.sel;if(r.sim)return SimBots.lobbyInit(r,host);const ppl=r.part.map((n,i)=>({n,st:n==='Tú'?'conf':(i===0?'ready':'conf')}));
   S.lobby={host,ready:false,started:false,ppl,msgs:host?[]:[{n:r.host,t:'Buenas, parche. Nos vemos 15 minutos antes y tanqueamos ahí mismo.'}]};
 }
 const readyN=()=>S.lobby.ppl.filter(p=>p.st==='ready').length;
@@ -311,7 +311,7 @@ const pplHTML=()=>S.lobby.ppl.map(p=>`<button class="prow" data-act="peek" data-
 const chatHTML=()=>S.lobby.msgs.map(m=>m.me?`<div class="msg-b me">${esc(m.t)}</div>`:`<div class="msg-b"><small>${esc(m.n)} ${lchip(m.n)}</small>${esc(m.t)}</div>`).join('')||'<p class="small" style="margin:0">Aún no hay mensajes. Saluda al parche.</p>';
 function refreshLobby(){const L=S.lobby;if(S.screen!=='lobby')return;const p=$('#lppl');if(!p)return;p.innerHTML=pplHTML();const rn=readyN();$('#lcount').textContent=rn+' de '+L.ppl.length+' listos';$('#lmeter').style.width=(L.ppl.length?rn/L.ppl.length*100:0)+'%';const h=$('#hbtn');if(h)h.disabled=rn<1}
 function refreshChat(){const c=$('#lchat');if(c){c.innerHTML=chatHTML();const b=$('#lbody');b.scrollTop=b.scrollHeight}}
-AFTER.lobby=()=>{const L=S.lobby,r=S.sel;
+AFTER.lobby=()=>{const L=S.lobby,r=S.sel;if(r.sim)return SimBots.lobbyAfter();
  $('#cform').addEventListener('submit',e=>{e.preventDefault();const i=$('#cin');const t=i.value.trim();if(!t)return;L.msgs.push({me:1,t});i.value='';refreshChat();
    later(()=>{const o=L.ppl.filter(p=>p.n!=='Tú');if(!o.length)return;L.msgs.push({n:o[hash(t)%o.length].n,t:['Listo, ahí nos vemos.','Perfecto, yo ya estoy saliendo.','Me avisan si cambia algo.','Dale, parche.'][hash(t)%4]});refreshChat()},1500)});
  if(L.host){const names=POOL.filter(n=>!L.ppl.some(p=>p.n===n));
@@ -448,10 +448,10 @@ const ACT={
  enterLobby:()=>{if(!S.lobby||S.lobby.rid!==S.sel.id){initLobby(S.sel.host==='Tú');S.lobby.rid=S.sel.id}go('lobby')},
  ready:()=>{const L=S.lobby;L.ready=!L.ready;const me=L.ppl.find(p=>p.n==='Tú');me.st=L.ready?'ready':'conf';
    refreshLobby();const b=$('#rbtn');b.textContent=L.ready?'Listo para salir · toca para cancelar':'Estoy listo para salir';
-   if(L.ready){later(()=>{if(L.started||!L.ready)return;L.started=true;L.msgs.push({n:S.sel.host,t:'Arrancamos. Todos al punto de encuentro.'});beep(740,.2);render()},3500)}},
+   if(L.ready&&!S.sel.sim){later(()=>{if(L.started||!L.ready)return;L.started=true;L.msgs.push({n:S.sel.host,t:'Arrancamos. Todos al punto de encuentro.'});beep(740,.2);render()},3500)}},
  hostStart:()=>{S.lobby.started=true;go('enroute')},
  toEnroute:()=>go('enroute'),
- leave:()=>{const r=S.sel;const i=r.part.indexOf('Tú');if(i>=0&&r.host!=='Tú')r.part.splice(i,1);if(r.host==='Tú')S.rides=S.rides.filter(x=>x!==r);S.lobby=null;toast(r.host==='Tú'?'Rodada cancelada':'Saliste de la rodada');go('home')},
+ leave:()=>{const r=S.sel;if(r.sim)SimBots.reset(r);const i=r.part.indexOf('Tú');if(i>=0&&r.host!=='Tú')r.part.splice(i,1);if(r.host==='Tú')S.rides=S.rides.filter(x=>x!==r);S.lobby=null;toast(r.host==='Tú'?'Rodada cancelada':'Saliste de la rodada');go('home')},
  micAsk:()=>openLayer(`<div class="scrim" data-act="closeLayer"></div><div class="dlg sheet" role="dialog" aria-label="Permiso de micrófono"><span class="ic">${I('mic',26)}</span><h2 class="t">¿Activar el canal de voz?</h2><p>RodApp usa el micrófono para que hables con tu grupo sin soltar el manubrio.</p><button class="btn" data-act="micYes">Permitir</button><button class="btn ghost" data-act="micNo">No permitir</button></div>`),
  micYes:()=>{S.micOk=true;closeLayer();startRun();go('hud')},
  micNo:()=>{S.micOk=false;closeLayer();startRun();S.run.mic=false;go('hud')},
@@ -468,7 +468,7 @@ const ACT={
    S.rides.unshift(r);S.sel=r;S.cr={nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null};initLobby(true);S.lobby.rid=r.id;toast('Rodada publicada');go('lobby')},
  shareSum:async()=>{const s=stats();const t=`Rodé ${s.km} km con RodApp: ${S.sel.name}.`;try{if(navigator.share){await navigator.share({text:t});return}}catch(e){}toast('Resumen copiado para compartir')},
  star:d=>{S.rate[d.n+d.k]=+d.v;render()},
- sendRate:()=>{S.award=null;S.rate={};S.run=null;S.lobby=null;const r=S.sel;const i=r.part.indexOf('Tú');if(i>=0)r.part.splice(i,1);toast('Gracias. Tu parche queda más seguro');go('home')},
+ sendRate:()=>{S.award=null;S.rate={};S.run=null;S.lobby=null;const r=S.sel;if(r.sim)SimBots.reset(r);const i=r.part.indexOf('Tú');if(i>=0)r.part.splice(i,1);toast('Gracias. Tu parche queda más seguro');go('home')},
  skipRate:()=>{S.award=null;S.rate={};S.run=null;S.lobby=null;go('home')},
   cvista:d=>{S.com.vista=d.v;if(d.v!=='tu')S.com.gfilter=null;render()},
   czona:d=>{S.zonaMia=d.v;render()},
@@ -499,6 +499,6 @@ document.addEventListener('input',e=>{const t=e.target;const b=t.dataset&&t.data
  if(o==='login'){delete S.errs.login;document.querySelectorAll('.field.err').forEach(x=>x.classList.remove('err'))}});
 document.addEventListener('change',e=>{const t=e.target;if(t.tagName==='SELECT'&&t.dataset.bind){const [o,k]=t.dataset.bind.split('.');S[o][k]=t.value;delete S.errs[t.dataset.k];t.closest('.field').classList.remove('err')}});
 
-AFTER.home=()=>{if(S.tourOffer){S.tourOffer=false;later(()=>Tour.start(),400)}};
+AFTER.home=()=>{if(S.tourOffer){S.tourOffer=false;if(Tour.shouldShow())later(()=>Tour.start(),400)}};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!(window.Tour&&Tour.active)&&!$('#layer').hidden)closeLayer()});
 render();

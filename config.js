@@ -11,5 +11,7 @@ window.RODAPP_CONFIG=Object.assign({
   /* Revisión de cuentas. 'auto' (piloto): si la cédula se fotografió y se confirmaron nombre y número, la cuenta entra aunque el OCR haya fallado o la persona haya corregido datos;
      queda guardado en identity_docs (editado, ocr_ok) para auditar después. 'manual': esos casos esperan a una persona. Los antecedentes con registros y la verificación sin selfie siempre esperan a una persona. */
   revision:'auto',
-  mapStyle:'dark'
+  mapStyle:'dark',
+  /* Rodadas de ejemplo con compañeros simulados (sim.js) junto a las reales. Ponlo en false cuando haya suficientes rodadas reales. */
+  rodadasEjemplo:true
 },window.RODAPP_OVERRIDE||{});

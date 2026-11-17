@@ -8,7 +8,10 @@ const NIVD={Principiante:'Menos de 1 año o rodadas cortas.',Intermedio:'Rodadas
 const CCS=[{k:'<200',t:'Menos de 200 cc',d:'Urbanas, scooters y motos de entrada'},{k:'200–500',t:'200 cc a 500 cc',d:'Naked, trail y deportivas medias'},{k:'>500',t:'Más de 500 cc',d:'Alto cilindraje y touring'}];
 const ZONAS=['Norte','Calera','Patios','Sur','Occidente'];
 const ZONA_INFO={Norte:'Suba, Usaquén, Chía, Cajicá y Zipaquirá',Calera:'La Calera, Guasca y Guatavita',Patios:'Vía Patios – La Calera',Sur:'Soacha, Sibaté y Fusagasugá',Occidente:'Tenjo, Tabio, Mosquera y Madrid'};
-const FECHAS=['Sáb 14 nov','Dom 15 nov','Sáb 21 nov','Dom 22 nov'];
+/* Próximos 2 sábados y 2 domingos (incluye hoy si es fin de semana), para que las fechas nunca queden vencidas. */
+const FECHAS=(()=>{const D=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],M=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'],o=[],d=new Date();d.setHours(12,0,0,0);
+  for(let i=0;o.length<4&&i<21;i++){const x=new Date(d.getTime()+i*864e5),w=x.getDay();if(w===6||w===0)o.push({w,s:D[w]+' '+x.getDate()+' '+M[x.getMonth()]})}
+  const sat=o.filter(x=>x.w===6),dom=o.filter(x=>x.w===0);return [sat[0],dom[0],sat[1],dom[1]].filter(Boolean).map(x=>x.s)})();
 const HORAS=['5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM'];
 const DISP=['Entre semana, de noche','Sábados','Domingos','Festivos','Madrugadas'];
 const TIPOS=['Scooter','Naked','Deportiva','Trail','Touring','Custom'];
@@ -40,15 +43,15 @@ const ALERTS={
   gasolina:{t:'Gasolina / Descanso',say:'Paramos a tanquear o descansar',k:'#007AFF',kt:'#fff',ic:'fuel'}
 };
 function seed(){return [
- {id:1,name:'La Calera – Guasca',zona:'Calera',cc:'200–500',nivel:'Intermedio',fecha:'Dom 15 nov',hora:'7:00 AM',cupo:8,part:['Mauricio T.','Sofía M.','Julián P.','Andrés F.','Laura G.'],punto:SPOTS[1],km:52,rt:0,host:'Mauricio T.',club:'Calera Riders',ver:true},
- {id:2,name:'Suba – Zipaquirá',zona:'Norte',cc:'<200',nivel:'Principiante',fecha:'Dom 15 nov',hora:'8:30 AM',cupo:6,part:['Paola R.','Esteban L.','Marcela D.','Hugo V.','Tatiana C.'],punto:SPOTS[0],km:48,rt:1,host:'Paola R.',club:'Parche Norte MC',ver:true},
- {id:3,name:'Autopista Sur – Sibaté',zona:'Sur',cc:'>500',nivel:'Avanzado',fecha:'Dom 15 nov',hora:'6:00 AM',cupo:10,part:['Iván G.','Wilson P.','Diego A.'],punto:SPOTS[3],km:64,rt:2,host:'Iván G.',club:'Sur Sport Bogotá',ver:true},
- {id:4,name:'Patios – La Calera',zona:'Patios',cc:'200–500',nivel:'Intermedio',fecha:'Sáb 21 nov',hora:'6:30 AM',cupo:8,part:['Santiago N.','Lorena Q.','Mateo Z.','Pilar J.'],punto:SPOTS[1],km:41,rt:3,host:'Santiago N.',club:'Patios Trail Club',ver:true},
- {id:5,name:'Chía – Cajicá',zona:'Norte',cc:'<200',nivel:'Principiante',fecha:'Sáb 14 nov',hora:'7:30 AM',cupo:10,part:['Carlos B.','Dani S.','Lucho M.','Ángela P.','Jorge R.','Mónica T.','Felipe A.','Natalia O.'],punto:SPOTS[0],km:36,rt:4,host:'Carlos B.',club:'Moteros del Norte',ver:false,lugar:'chia'},
- {id:6,name:'Sesquilé – Guatavita',zona:'Norte',cc:'>500',nivel:'Avanzado',fecha:'Sáb 21 nov',hora:'6:30 AM',cupo:8,part:['Yurany H.','Brayan C.','Valentina S.','Nicolás B.'],punto:SPOTS[0],km:96,rt:5,host:'Yurany H.',club:'Sesquilé Riders',ver:true},
- {id:7,name:'Tenjo – Tabio',zona:'Occidente',cc:'200–500',nivel:'Intermedio',fecha:'Dom 22 nov',hora:'7:30 AM',cupo:8,part:['Julián M.','Natalia V.','Óscar P.'],punto:SPOTS[2],km:68,rt:6,host:'Julián M.',club:'Occidente Riders',ver:true},
- {id:8,name:'Mosquera – Madrid',zona:'Occidente',cc:'<200',nivel:'Principiante',fecha:'Sáb 14 nov',hora:'8:00 AM',cupo:8,part:['Daniela K.','Brian S.'],punto:SPOTS[5],km:44,rt:7,host:'Daniela K.',club:'Moteras de la Sabana',ver:true}
-];}
+ {id:1,name:'La Calera – Guasca',zona:'Calera',cc:'200–500',nivel:'Intermedio',fecha:FECHAS[1],hora:'7:00 AM',cupo:8,part:['Mauricio T.','Sofía M.','Julián P.','Andrés F.','Laura G.'],punto:SPOTS[1],km:52,rt:0,host:'Mauricio T.',club:'Calera Riders',ver:true},
+ {id:2,name:'Suba – Zipaquirá',zona:'Norte',cc:'<200',nivel:'Principiante',fecha:FECHAS[1],hora:'8:30 AM',cupo:6,part:['Paola R.','Esteban L.','Marcela D.','Hugo V.','Tatiana C.'],punto:SPOTS[0],km:48,rt:1,host:'Paola R.',club:'Parche Norte MC',ver:true},
+ {id:3,name:'Autopista Sur – Sibaté',zona:'Sur',cc:'>500',nivel:'Avanzado',fecha:FECHAS[1],hora:'6:00 AM',cupo:10,part:['Iván G.','Wilson P.','Diego A.'],punto:SPOTS[3],km:64,rt:2,host:'Iván G.',club:'Sur Sport Bogotá',ver:true},
+ {id:4,name:'Patios – La Calera',zona:'Patios',cc:'200–500',nivel:'Intermedio',fecha:FECHAS[2],hora:'6:30 AM',cupo:8,part:['Santiago N.','Lorena Q.','Mateo Z.','Pilar J.'],punto:SPOTS[1],km:41,rt:3,host:'Santiago N.',club:'Patios Trail Club',ver:true},
+ {id:5,name:'Chía – Cajicá',zona:'Norte',cc:'<200',nivel:'Principiante',fecha:FECHAS[0],hora:'7:30 AM',cupo:10,part:['Carlos B.','Dani S.','Lucho M.','Ángela P.','Jorge R.','Mónica T.','Felipe A.','Natalia O.'],punto:SPOTS[0],km:36,rt:4,host:'Carlos B.',club:'Moteros del Norte',ver:false,lugar:'chia'},
+ {id:6,name:'Sesquilé – Guatavita',zona:'Norte',cc:'>500',nivel:'Avanzado',fecha:FECHAS[2],hora:'6:30 AM',cupo:8,part:['Yurany H.','Brayan C.','Valentina S.','Nicolás B.'],punto:SPOTS[0],km:96,rt:5,host:'Yurany H.',club:'Sesquilé Riders',ver:true},
+ {id:7,name:'Tenjo – Tabio',zona:'Occidente',cc:'200–500',nivel:'Intermedio',fecha:FECHAS[3],hora:'7:30 AM',cupo:8,part:['Julián M.','Natalia V.','Óscar P.'],punto:SPOTS[2],km:68,rt:6,host:'Julián M.',club:'Occidente Riders',ver:true},
+ {id:8,name:'Mosquera – Madrid',zona:'Occidente',cc:'<200',nivel:'Principiante',fecha:FECHAS[0],hora:'8:00 AM',cupo:8,part:['Daniela K.','Brian S.'],punto:SPOTS[5],km:44,rt:7,host:'Daniela K.',club:'Moteras de la Sabana',ver:true}
+].map(r=>Object.assign(r,{sim:true}));}
 
 /* ================= experiencia, insignias y comunidad ================= */
 const LV=[0,100,250,450,700,1000,1400],LVN=['Novato','Rodador','Rutero','Viajero','Veterano','Experto','Leyenda'];

@@ -29,7 +29,7 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
     if(navigator.geolocation){this.watch=navigator.geolocation.watchPosition(p=>{this.me=[p.coords.latitude,p.coords.longitude,Date.now(),p.coords.heading,p.coords.speed==null?null:p.coords.speed*3.6];this.err=null;this.push(p.coords);MapKit.draw()},
       e=>{this.err=e.code===1?'denegado':e.code===2?'sin señal GPS':'tarda demasiado';this.useSim();MapKit.draw()},{enableHighAccuracy:true,maximumAge:3000,timeout:15000})}
     else{this.err='sin GPS';this.useSim()}
-    if(RodAPI.live)this.join();else this.seedPeers()},
+    if(RodAPI.live&&!(S.sel&&S.sel.sim))this.join();else this.seedPeers()},
   stop(){this.sharing=false;if(this.watch!=null){navigator.geolocation.clearWatch(this.watch);this.watch=null}
     if(this.wake){try{this.wake.release()}catch(e){}this.wake=null}
     if(this.ch){try{this.ch.unsubscribe()}catch(e){}this.ch=null}
@@ -43,13 +43,9 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
       this.ch=cl.channel('ride:'+this.rideId(),{config:{private:true,broadcast:{self:false}}});
       this.ch.on('broadcast',{event:'pos'},({payload:p})=>{this.peers[p.uid]={n:p.name,ll:[p.lat,p.lng],t:p.t,v:p.spd};MapKit.draw()}).subscribe()}
     catch(e){this.err='sin conexión en vivo';MapKit.draw()}},
-  /* Demo: compañeros que avanzan por la ruta con ruido. Solo corre mientras se ve el mapa. */
-  seedPeers(){const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0],d=DEST_LL[r.zona]||DEST_LL.Norte;
-    this.sim={p0,d};this.peers={};r.part.filter(n=>n!=='Tú').slice(0,5).forEach((n,i)=>{this.peers[n]={n,ll:[p0[0]+(Math.random()-.5)*.004,p0[1]+(Math.random()-.5)*.004],t:Date.now(),f:Math.random()*.02+.01*i,v:8+Math.random()*3}})},
-  tick(){if(!this.sim)return;const{p0,d}=this.sim,names=Object.keys(this.peers);names.forEach((n,i)=>{const q=this.peers[n];
-      if(i===names.length-1&&q.f>.5)return;           /* el último se atrasa y deja de reportar: prueba de "rezagado" */
-      q.f=Math.min(1,q.f+.004+Math.random()*.003-(i===names.length-1?.003:0));
-      q.ll=[p0[0]+(d[0]-p0[0])*q.f+Math.sin(q.f*9+i)*.004,p0[1]+(d[1]-p0[1])*q.f+Math.cos(q.f*7+i)*.004];q.t=Date.now()});
+  /* Compañeros simulados (rodadas de ejemplo): salen de distintos barrios y avanzan despacio hacia el punto de encuentro. Ver sim.js. */
+  seedPeers(){SimBots.init(S.sel);this.peers=SimBots.peers(S.sel)},
+  tick(){if(!this.sharing)return;if(S.sel)this.peers=SimBots.peers(S.sel);
     if(this.simMe&&this.me){this.me=[this.me[0]+(Math.random()-.4)*.0004,this.me[1]+(Math.random()-.4)*.0004,Date.now(),null,28+Math.random()*10]}}};
 
 /* ---------- mapa: MapLibre si hay estilo configurado; si no, esquema SVG ---------- */
@@ -90,7 +86,7 @@ function peerRows(){const me=Live.me,now=Date.now();
 function peersHTML(){const rows=peerRows();if(!rows.length)return `<p class="small">${Live.sharing?'Esperando a que tus compañeros compartan ubicación.':'Activa tu ubicación para ver al grupo.'}</p>`;
   return rows.map(q=>{const st=q.a>LOST_MS?'Sin señal':q.a>STALE_MS?'Señal débil':'En vivo';const cl=q.a>LOST_MS?'lost':q.a>STALE_MS?'weak':'';
     return `<div class="prow ${cl}">${av(q.n)}<span class="pn"><b>${esc(q.n)}</b><span class="small">${q.d==null?'—':'a '+fmtD(q.d)} · ${ago(Date.now()-q.a)}</span></span><span class="pst">${st}</span></div>`}).join('')}
-function lagHTML(){const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
+function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
   return `<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>${esc(first(out[0].n))} se quedó atrás.</b> ${out[0].a>LOST_MS?'Perdimos su señal hace más de 1 minuto.':'Está a '+fmtD(out[0].d)+'.'}</span></div>`}
 
 SCR.mapa=()=>{const r=S.sel,sh=Live.sharing;

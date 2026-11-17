@@ -3,34 +3,26 @@
    Oscurece todo lo que no se explica, resalta un elemento real de la app y muestra un mensaje corto.
    Depende de app.js: S, go, fixedUser, startRun, $, I. No guarda datos del usuario. */
 const Tour=(()=>{
+  /* Recorrido corto: bienvenida, panel, crear, unirse, comunidad, clubes y despedida.
+     clear = se ve toda la pantalla sin oscurecer; sel = se oscurece todo menos ese elemento; mas = lleva al motociclista. */
   const STEPS=[
-    {scr:'home',intro:true,t:'¡Bienvenido a RodApp!',d:'Te mostramos la app en 1 minuto. Puedes salir cuando quieras.'},
-    {scr:'home',sel:'#screen [data-tour="h-titulo"]',t:'Encuentra tu rodada',d:'Aquí aparecen las salidas de la ciudad y de la Sabana.'},
-    {scr:'home',sel:'#screen [data-tour="h-filtros"]',t:'Filtra a tu medida',d:'Elige cilindraje, fecha y zona.'},
-    {scr:'home',sel:'#screen .ride',t:'Cada rodada, clara',d:'Mira el nivel, los cupos y quién guía antes de unirte.'},
-    {scr:'home',sel:'#screen .fab',t:'Crea la tuya',d:'¿No hay una para ti? Publica ruta, nivel y cupos.'},
-    {scr:'home',sel:'#screen .tabs button:nth-child(2)',t:'Comunidad',d:'Avisos de la vía, grupos y rodadas de tu zona.'},
-    {scr:'home',sel:'#screen .tabs button:nth-child(3)',t:'Clubes',d:'Compite con tu club por asistencia y rodadas sin incidentes.'},
-    {scr:'comunidad',sel:'#screen [data-tour="c-vistas"]',t:'Tu vista, tu zona, tus grupos',d:'Cambia entre lo que te interesa y lo que pasa cerca.'},
-    {scr:'comunidad',sel:'#screen [data-tour="c-temas"]',t:'Avisos que ayudan',d:'Peligros, hurtos, normas y talleres. Confirma lo que veas en la vía.'},
-    {scr:'hud',sel:'#screen .alerts',t:'Alerta de un toque',d:'En ruta, un toque avisa al grupo por voz. Sin escribir ni mirar.'},
-    {scr:'perfil',sel:'#screen [data-tour="p-xp"]',t:'Tu progreso',d:'Cada rodada suma XP. Las rutas largas dan insignias.'},
-    {scr:'home',final:true,t:'¡Listo para rodar!',d:'Busca tu primera rodada o crea la tuya.'}
+    {scr:'home',intro:true,mas:true,t:'¡Bienvenido a RodApp!',d:'Soy tu guía. En menos de un minuto te muestro lo esencial para rodar con tu parche.'},
+    {scr:'home',clear:true,t:'Este es tu panel principal',d:'Aquí encuentras a tus compañeros de rodada.'},
+    {scr:'home',sel:'#screen .fab',t:'Crea tu rodada',d:'Publica la ruta, el nivel y los cupos, y arma tu propio parche.'},
+    {scr:'home',sel:'#screen .cards',t:'O únete a una que ya existe',d:'Mira el nivel, los cupos y quién guía antes de confirmar. Los compañeros llegan al punto de encuentro y te escriben en el chat.'},
+    {scr:'comunidad',clear:true,t:'Comunidad',d:'Habla con otros usuarios de RodApp, publica avisos de la vía y responde a los de los demás.'},
+    {scr:'clubes',clear:true,t:'Clubes',d:'<ul class="tul"><li>Compiten entre clubes por zona, cilindraje y nivel.</li><li>Más miembros Premium en tu club, más descuento para todos.</li><li>Rodar en grupo suma puntos y sube a tu club en la tabla.</li></ul>'},
+    {scr:'home',final:true,mas:true,t:'¡Gracias por acompañarme!',d:'Ahora te toca a ti: explora la app, únete a una rodada y arma tu parche.'}
   ];
-  const TOTAL=STEPS.filter(s=>s.sel).length;
+  const TOTAL=STEPS.filter(s=>!s.intro&&!s.final).length;
   let idx=0,active=false;
 
   /* Lleva la app a la pantalla que necesita el paso. No recarga si ya está en ella. */
   function prep(scr){
-    if(scr==='home'){
-      if(S.screen!=='home'){fixedUser();S.f={cc:null,zona:null,fecha:null};S.run=null;go('home')}
-    }else if(scr==='comunidad'){
-      if(S.screen!=='comunidad'){fixedUser();Object.assign(S.com,{vista:'tu',tema:null,gfilter:null,open:null});go('comunidad')}
-    }else if(scr==='hud'){
-      if(S.screen!=='hud'){fixedUser();S.sel=S.rides[0];S.micOk=true;startRun();go('hud')}
-    }else if(scr==='perfil'){
-      if(S.screen!=='perfil'){fixedUser();go('perfil')}
-    }
+    if(!S.user)fixedUser();
+    if(scr==='home'){if(S.screen!=='home'){S.f={cc:null,zona:null,fecha:null};go('home')}}
+    else if(scr==='comunidad'){if(S.screen!=='comunidad'){Object.assign(S.com,{vista:'tu',tema:null,gfilter:null,open:null});go('comunidad')}}
+    else if(scr==='clubes'){if(S.screen!=='clubes')go('clubes')}
   }
 
   /* Rectángulo del elemento relativo al marco del teléfono. */
@@ -45,17 +37,16 @@ const Tour=(()=>{
     if(er.top<br.top+6||er.bottom>br.bottom-6){b.scrollTop+=(er.top-br.top)-Math.max(6,(br.height-er.height)/2)}
   }
 
+  const MAS='<img class="tmas" src="assets/mascota.png" alt="" width="420" height="377">';
   function cardHTML(st,n){
     const close=`<button class="tx" data-t="skip" aria-label="Salir del recorrido">Saltar</button>`;
-    if(st.intro)return `<span class="tic" aria-hidden="true">${I('route',30,2.2)}</span>
-      <h2 class="tt" id="tt">${st.t}</h2><p class="td" id="td">${st.d}</p>
+    if(st.intro)return `${MAS}<h2 class="tt" id="tt">${st.t}</h2><p class="td" id="td">${st.d}</p>
       <div class="tbtns"><button class="tb pri" data-t="next">Empezar recorrido</button><button class="tb lnk" data-t="skip">Ahora no</button></div>`;
-    if(st.final)return `<span class="tic" aria-hidden="true">${I('flag',30,2.2)}</span>
-      <h2 class="tt" id="tt">${st.t}</h2><p class="td" id="td">${st.d}</p>
-      <div class="tbtns"><button class="tb pri" data-t="next">Ver rodadas</button><button class="tb lnk" data-t="prev">Volver atrás</button></div>`;
+    if(st.final)return `${MAS}<h2 class="tt" id="tt">${st.t}</h2><p class="td" id="td">${st.d}</p>
+      <div class="tbtns"><button class="tb pri" data-t="next">Ver la app</button><button class="tb lnk" data-t="prev">Volver atrás</button></div>`;
     const seg=Array.from({length:TOTAL},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('');
     return `<div class="thead"><span class="tn">${n} de ${TOTAL}</span>${close}</div><div class="tseg" aria-hidden="true">${seg}</div>
-      <h2 class="tt" id="tt">${st.t}</h2><p class="td" id="td">${st.d}</p>
+      <h2 class="tt" id="tt">${st.t}</h2><div class="td" id="td">${st.d}</div>
       <div class="tbtns row"><button class="tb gho" data-t="prev">Anterior</button><button class="tb pri" data-t="next">Siguiente</button></div>`;
   }
 
@@ -64,6 +55,10 @@ const Tour=(()=>{
     const root=$('#tour');if(!root||root.hidden)return;
     const spot=root.querySelector('.tspot'),card=root.querySelector('.tcard'),arr=card.querySelector('.tarr');
     const ph=$('.phone'),W=ph.clientWidth,H=ph.clientHeight;
+    if(st.clear){ /* pantalla completa visible; la tarjeta va abajo, sobre la barra de pestañas */
+      spot.className='tspot none clear';spot.style.cssText='left:50%;top:50%;width:0;height:0';
+      arr.hidden=true;card.style.top=Math.max(14,H-card.offsetHeight-92)+'px';return;
+    }
     if(!st.sel){
       spot.className='tspot none';spot.style.cssText='left:50%;top:50%;width:0;height:0';
       arr.hidden=true;card.style.top=Math.max(14,(H-card.offsetHeight)/2)+'px';return;
@@ -87,11 +82,11 @@ const Tour=(()=>{
     idx=Math.max(0,Math.min(STEPS.length-1,i));
     const st=STEPS[idx];
     prep(st.scr);
-    const n=STEPS.slice(0,idx+1).filter(s=>s.sel).length;
+    const n=STEPS.slice(0,idx+1).filter(s=>!s.intro&&!s.final).length;
     const root=$('#tour');
     root.hidden=false;$('#screen').inert=true;
     root.innerHTML=`<div class="tblock"></div><div class="tspot none" aria-hidden="true"></div>
-      <div class="tcard" role="dialog" aria-modal="true" aria-labelledby="tt" aria-describedby="td"><span class="tarr" hidden></span>${cardHTML(st,n)}</div>`;
+      <div class="tcard ${st.mas?'mas':''}" role="dialog" aria-modal="true" aria-labelledby="tt" aria-describedby="td"><span class="tarr" hidden></span>${cardHTML(st,n)}</div>`;
     place(st);
     const f=root.querySelector('[data-t="next"]');if(f)try{f.focus({preventScroll:true})}catch(e){}
   }
@@ -100,7 +95,6 @@ const Tour=(()=>{
     if(!active)return;
     active=false;const root=$('#tour');root.hidden=true;root.innerHTML='';$('#screen').inert=false;
     if(!silent){
-      if(S.screen==='hud')S.run=null;
       if(S.screen!=='home')go('home');
     }
   }
@@ -126,5 +120,8 @@ const Tour=(()=>{
   });
   window.addEventListener('resize',()=>{if(active)place(STEPS[idx])});
 
-  return{start,stop,next,prev,get active(){return active},get steps(){return STEPS.length}};
+  /* Con cuenta real el recorrido se ofrece una sola vez por usuario. En demo se ofrece siempre. */
+  function shouldShow(){if(!RodAPI.live)return true;const k='rodapp.tour.v2.'+(RodAPI.uid()||'x');
+    try{if(localStorage.getItem(k))return false;localStorage.setItem(k,'1')}catch(e){}return true}
+  return{start,stop,next,prev,shouldShow,get active(){return active},get steps(){return STEPS.length}};
 })();

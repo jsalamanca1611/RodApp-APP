@@ -352,6 +352,11 @@ button.prow{width:100%;text-align:left}
 #tour .tblock{position:absolute;inset:0}
 #tour .tspot{position:absolute;border-radius:16px;pointer-events:none;box-shadow:0 0 0 3px #2FD98D,0 0 0 9999px rgba(0,0,0,.78)}
 #tour .tspot.none{border-radius:0;box-shadow:0 0 0 9999px rgba(0,0,0,.8)}
+#tour .tspot.clear{box-shadow:none}
+#tour .tcard.mas{overflow:hidden;padding-top:0}
+#tour .tmas{display:block;width:calc(100% + 32px);margin:0 -16px -26px;height:auto;max-height:230px;object-fit:cover;object-position:top;mix-blend-mode:lighten;filter:brightness(1.35) saturate(1.2);-webkit-mask-image:linear-gradient(#000 72%,transparent);mask-image:linear-gradient(#000 72%,transparent)}
+#tour .tul{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:6px}
+#tour .tul li{padding-left:2px}
 #tour .tcard{position:absolute;left:14px;right:14px;background:#111815;color:#fff;border-radius:20px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:8px;box-shadow:inset 0 0 0 1px #2A3A32,0 18px 44px rgba(0,0,0,.7)}
 #tour .tarr{position:absolute;width:14px;height:14px;background:#111815;transform:rotate(45deg);border-radius:3px}
 #tour .tarr.up{top:-7px}
