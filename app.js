@@ -205,7 +205,7 @@ SCR.done=()=>`<div class="scr light"><div class="body" style="justify-content:ce
 const tabbar=cur=>`<nav class="tabs" aria-label="Principal">${[['home','Inicio','home'],['comunidad','Comunidad','people'],['clubes','Clubes','trophy'],['perfil','Perfil','user']].map(([k,l,i])=>`<button data-act="go" data-to="${k}" ${cur===k?'aria-current="true"':''}>${I(i,24)}${l}</button>`).join('')}</nav>`;
 const lvl=n=>`<span class="lvl"><span class="b">${[1,2,3].map(i=>`<i class="${i<=NIV[n]?'f':''}"></i>`).join('')}</span>${n}</span>`;
 function rideCard(r){const c=cuposOf(r);const cl=c<=0?'full':c<=2?'low':'';
- return `<button class="ride" data-act="open" data-id="${r.id}"><div class="rtop"><h3>${esc(r.name)}</h3>${lvl(r.nivel)}</div>
+ return `<button class="ride" data-act="open" data-id="${r.id}"><div class="rtop"><h3>${esc(r.name)}</h3>${lvl(r.nivel)}</div>${r.sim&&RodAPI.live?'<div class="small" style="margin:-2px 0 6px;color:var(--mut)">Rodada de ejemplo · los compañeros son simulados</div>':''}
  <div class="host">${r.ver?vb():''}<span>${esc(r.club)} · ${esc(r.host==='Tú'?'Tú':r.host)}</span></div>
  <div class="meta"><span>${I('clock',16)}${r.fecha}, ${r.hora}</span><span>${I('pin',16)}${r.zona}</span><span>${I('engine',16)}${r.cc} cc</span>${r.lugar&&!S.badges.includes(r.lugar)?`<span style="color:var(--neon)">${I('star',16)}Insignia ${BADGES.find(b=>b.k===r.lugar).n} · +${XP_INSIGNIA} XP</span>`:''}</div>
  <div class="rfoot">${avs(r.part)}<span class="cupos ${cl}">${c<=0?'Rodada llena':c===1?'Queda 1 cupo':c+' cupos'}</span></div></button>`}

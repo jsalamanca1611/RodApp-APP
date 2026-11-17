@@ -26,14 +26,21 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
     if(!S.consent.ubic){return openLocPrompt()}
     this.sharing=true;
     if('wakeLock' in navigator){try{this.wake=await navigator.wakeLock.request('screen')}catch(e){}}
-    if(navigator.geolocation){this.watch=navigator.geolocation.watchPosition(p=>{this.me=[p.coords.latitude,p.coords.longitude,Date.now(),p.coords.heading,p.coords.speed==null?null:p.coords.speed*3.6];this.err=null;this.push(p.coords);MapKit.draw()},
-      e=>{this.err=e.code===1?'denegado':e.code===2?'sin señal GPS':'tarda demasiado';this.useSim();MapKit.draw()},{enableHighAccuracy:true,maximumAge:3000,timeout:15000})}
-    else{this.err='sin GPS';this.useSim()}
+    if(navigator.geolocation){
+      const ok=p=>{const c=p.coords;this.simMe=false;this.me=[c.latitude,c.longitude,Date.now(),c.heading,c.speed==null?null:c.speed*3.6,c.accuracy];this.err=null;this.push(c);MapKit.draw()};
+      const watch=hi=>{this._hi=hi;this.watch=navigator.geolocation.watchPosition(ok,e=>{
+        if(e.code===1){this.err='denegado'}
+        else{this.err=e.code===2?'sin señal GPS':'tarda demasiado';
+          if(hi&&this.sharing){navigator.geolocation.clearWatch(this.watch);watch(false)}}   /* reintenta con ubicación por red/wifi */
+        if(!RodAPI.live)this.useSim();MapKit.draw()},{enableHighAccuracy:hi,maximumAge:hi?3000:10000,timeout:hi?20000:40000})};
+      navigator.geolocation.getCurrentPosition(ok,()=>{},{enableHighAccuracy:false,timeout:8000,maximumAge:60000});   /* primer dato rápido */
+      watch(true)}
+    else{this.err='sin GPS';if(!RodAPI.live)this.useSim()}
     if(RodAPI.live&&!(S.sel&&S.sel.sim))this.join();else this.seedPeers()},
   stop(){this.sharing=false;if(this.watch!=null){navigator.geolocation.clearWatch(this.watch);this.watch=null}
     if(this.wake){try{this.wake.release()}catch(e){}this.wake=null}
     if(this.ch){try{this.ch.unsubscribe()}catch(e){}this.ch=null}
-    this.me=null;this.peers={};this.sim=null},
+    this.me=null;this.simMe=false;this.peers={};this.sim=null},
   useSim(){if(!this.me){const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0];this.me=[p[0]+.0009,p[1]-.0007,Date.now()];this.simMe=true}},
   push(c){if(!this.ch)return;const now=Date.now();if(now-(this._t||0)<2000)return;this._t=now;
     this.ch.send({type:'broadcast',event:'pos',payload:{uid:RodAPI.session().user.id,name:S.user.nombre,lat:c.latitude,lng:c.longitude,spd:c.speed,hdg:c.heading,t:now}})},
@@ -81,7 +88,7 @@ const MapKit={map:null,mk:{},
       Object.entries(Live.peers).forEach(([id,q])=>{const k=mk(id,q.ll,`<span>${esc(ini(q.n))}</span><em>${esc(first(q.n))}</em>`,'mkp');const a=Date.now()-q.t;k.getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
     else el.innerHTML=this.svg();
     const sp=$('#spdv');if(sp)sp.textContent=Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):'—';
-    const l=$('#peers');if(l)l.innerHTML=peersHTML();const b=$('#lagban');if(b)b.innerHTML=lagHTML()},
+    const l=$('#peers');if(l)l.innerHTML=peersHTML();const b=$('#lagban');if(b)b.innerHTML=lagHTML();const ac=$('#acc');if(ac)ac.innerHTML=accHTML()},
   fallback(){if(!this.map||this._ok)return;try{this.map.remove()}catch(e){}this.map=null;this.mk={};const el=$('#mapbox');if(el){const keep=el.querySelector('.empty');el.innerHTML=this.svg()}},
   leave(){clearTimeout(this._bad);this._bad=null;if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0;this.follow=true}}};
 
@@ -90,6 +97,12 @@ function peerRows(){const me=Live.me,now=Date.now();
 function peersHTML(){const rows=peerRows();if(!rows.length)return `<p class="small">${Live.sharing?'Esperando a que tus compañeros compartan ubicación.':'Activa tu ubicación para ver al grupo.'}</p>`;
   return rows.map(q=>{const st=q.a>LOST_MS?'Sin señal':q.a>STALE_MS?'Señal débil':'En vivo';const cl=q.a>LOST_MS?'lost':q.a>STALE_MS?'weak':'';
     return `<div class="prow ${cl}">${av(q.n)}<span class="pn"><b>${esc(q.n)}</b><span class="small">${q.d==null?'—':'a '+fmtD(q.d)} · ${ago(Date.now()-q.a)}</span></span><span class="pst">${st}</span></div>`}).join('')}
+function accHTML(){if(!Live.sharing)return '';
+  if(Live.err&&!Live.me)return `<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}.${Live.err==='denegado'?' Activa el permiso de ubicación de RodApp en los ajustes del celular.':' Buscando de nuevo; sal a cielo abierto si estás bajo techo.'}</span></div>`;
+  if(!Live.me)return '<p class="small" style="margin:0">Buscando tu ubicación…</p>';
+  if(Live.simMe)return `<div class="banner info">${I('warn',20)}<span>Mostramos una posición de ejemplo.</span></div>`;
+  const a=Math.round(Live.me[5]||0);
+  return a>150?`<div class="banner info">${I('warn',20)}<span>Ubicación aproximada (±${a} m). Activa la ubicación de alta precisión y sal a cielo abierto.</span></div>`:`<p class="small" style="margin:0;color:#8FF0C0">Tu ubicación en vivo${a?' · ±'+a+' m':''}</p>`}
 function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
   return `<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>${esc(first(out[0].n))} se quedó atrás.</b> ${out[0].a>LOST_MS?'Perdimos su señal hace más de 1 minuto.':'Está a '+fmtD(out[0].d)+'.'}</span></div>`}
 
@@ -100,7 +113,7 @@ SCR.mapa=()=>{const r=S.sel,sh=Live.sharing;
   <div class="msheet"><div class="grab"></div><div id="lagban">${lagHTML()}</div>
    <div class="mhead"><div><b>${esc(r.name)}</b><span class="small" style="display:block">Salida · ${esc(r.punto)}</span></div></div>
    <div class="grow2" style="gap:10px"><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('waze')}">Ir con Waze</a><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('gmaps')}">Google Maps</a></div>
-   ${Live.err?`<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}. Mostramos una posición de ejemplo.</span></div>`:''}
+   ${sh?'<div id="acc">'+accHTML()+'</div>':''}
    ${sh?'':`<p class="small" style="margin:0;color:#9DB0A6">Ves el punto de encuentro (★). Comparte tu ubicación para verte con el grupo.</p>`}
    <div id="peers">${peersHTML()}</div>
    <p class="small" style="margin:0">Solo tu grupo ve tu ubicación, solo mientras compartes. Se apaga al terminar la rodada.</p>
