@@ -7,11 +7,11 @@ const Tour=(()=>{
      clear = se ve toda la pantalla sin oscurecer; sel = se oscurece todo menos ese elemento; mas = lleva al motociclista. */
   const STEPS=[
     {scr:'home',intro:true,mas:true,t:'¡Bienvenido a RodApp!',d:'Soy tu guía. En menos de un minuto te muestro lo esencial para rodar con tu parche.'},
-    {scr:'home',clear:true,t:'Este es tu panel principal',d:'Aquí encuentras a tus compañeros de rodada.'},
+    {scr:'home',sel:'#screen .tabs button:nth-child(1)',t:'Inicio: tu panel principal',d:'Aquí encuentras a tus compañeros de rodada. Este menú de abajo te lleva a cada sección de la app.'},
     {scr:'home',sel:'#screen .fab',t:'Crea tu rodada',d:'Publica la ruta, el nivel y los cupos, y arma tu propio parche.'},
     {scr:'home',sel:'#screen .cards',t:'O únete a una que ya existe',d:'Mira el nivel, los cupos y quién guía antes de confirmar. Los compañeros llegan al punto de encuentro y te escriben en el chat.'},
-    {scr:'comunidad',clear:true,t:'Comunidad',d:'Habla con otros usuarios de RodApp, publica avisos de la vía y responde a los de los demás.'},
-    {scr:'clubes',clear:true,t:'Clubes',d:'<ul class="tul"><li>Compiten entre clubes por zona, cilindraje y nivel.</li><li>Más miembros Premium en tu club, más descuento para todos.</li><li>Rodar en grupo suma puntos y sube a tu club en la tabla.</li></ul>'},
+    {scr:'comunidad',sel:'#screen .tabs button:nth-child(2)',t:'Comunidad',d:'Toca este ícono para entrar. Habla con otros usuarios, publica avisos de la vía y responde a los de los demás.'},
+    {scr:'clubes',sel:'#screen .tabs button:nth-child(3)',t:'Clubes',d:'<ul class="tul"><li>Compiten entre clubes por zona, cilindraje y nivel.</li><li>Más miembros Premium en tu club, más descuento para todos.</li><li>Rodar en grupo suma puntos y sube a tu club en la tabla.</li></ul>'},
     {scr:'home',final:true,mas:true,t:'¡Gracias por acompañarme!',d:'Ahora te toca a ti: explora la app, únete a una rodada y arma tu parche.'}
   ];
   const TOTAL=STEPS.filter(s=>!s.intro&&!s.final).length;
@@ -45,7 +45,7 @@ const Tour=(()=>{
     if(st.final)return `${MAS}<h2 class="tt" id="tt">${st.t}</h2><p class="td" id="td">${st.d}</p>
       <div class="tbtns"><button class="tb pri" data-t="next">Ver la app</button><button class="tb lnk" data-t="prev">Volver atrás</button></div>`;
     const seg=Array.from({length:TOTAL},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('');
-    return `<div class="thead"><span class="tn">${n} de ${TOTAL}</span>${close}</div><div class="tseg" aria-hidden="true">${seg}</div>
+    return `<div class="thead"><span class="tn">Recorrido · ${n} de ${TOTAL}</span>${close}</div><div class="tseg" aria-hidden="true">${seg}</div>
       <h2 class="tt" id="tt">${st.t}</h2><div class="td" id="td">${st.d}</div>
       <div class="tbtns row"><button class="tb gho" data-t="prev">Anterior</button><button class="tb pri" data-t="next">Siguiente</button></div>`;
   }
