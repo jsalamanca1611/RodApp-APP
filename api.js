@@ -4,12 +4,13 @@
    Regla: el navegador nunca llama al proveedor de antecedentes; lo hace la Edge Function "antecedentes". */
 const RodAPI=(()=>{
   const C=window.RODAPP_CONFIG||{},live=!!(C.supabaseUrl&&C.anonKey);
-  let ses=null;try{ses=JSON.parse(sessionStorage.getItem('rodapp.ses')||'null')}catch(e){}
+  let ses=null;try{ses=JSON.parse(localStorage.getItem('rodapp.ses')||sessionStorage.getItem('rodapp.ses')||'null')}catch(e){}
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const hdr=(auth,extra)=>Object.assign({apikey:C.anonKey,'Content-Type':'application/json'},auth&&ses?{Authorization:'Bearer '+ses.access_token}:{},extra||{});
   async function call(path,opt){const r=await fetch(C.supabaseUrl+path,opt),t=await r.text();let b;try{b=JSON.parse(t)}catch(e){b=t}
     if(!r.ok)throw Object.assign(new Error((b&&(b.msg||b.message||b.error_description))||r.statusText),{status:r.status});return b}
-  const keep=s=>{ses=s;try{sessionStorage.setItem('rodapp.ses',JSON.stringify(s))}catch(e){}};
+  /* La sesión se guarda en el dispositivo para no pedir el ingreso cada vez (importante en el APK). Se borra al cerrar sesión. */
+  const keep=s=>{ses=s;try{localStorage.setItem('rodapp.ses',JSON.stringify(s))}catch(e){}};
   let skew=0,refreshing=null;
   /* Renueva el access_token (dura ~1 h) con el refresh_token. Una sola renovación a la vez. */
   async function refresh(){if(!ses||!ses.refresh_token)throw new Error('sin sesión');
@@ -50,6 +51,8 @@ const RodAPI=(()=>{
     async saveIdentity(d){if(!live)return;
       await call('/rest/v1/identity_docs',{method:'POST',headers:hdr(true,{Prefer:'resolution=ignore-duplicates'}),body:JSON.stringify(Object.assign({user_id:ses.user.id},d))})},
     async profile(){if(!live||!ses)return null;
-      const r=await call('/rest/v1/profiles?id=eq.'+ses.user.id+'&select=nombre,exp,cc,placa,marca,ver_status,xp',{headers:hdr(true)});return r[0]||null},
+      const r=await rest('/profiles?id=eq.'+ses.user.id+'&select=nombre,exp,cc,placa,marca,ver_status,xp');return r[0]||null},
+    async signOut(){const t=ses&&ses.access_token;ses=null;try{localStorage.removeItem('rodapp.ses');sessionStorage.removeItem('rodapp.ses')}catch(e){}
+      if(live&&t)fetch(C.supabaseUrl+'/auth/v1/logout',{method:'POST',headers:{apikey:C.anonKey,Authorization:'Bearer '+t}}).catch(()=>{})},
     async saveProfile(p){if(!live)return;await call('/rest/v1/profiles?on_conflict=id',{method:'POST',headers:hdr(true,{Prefer:'resolution=merge-duplicates'}),body:JSON.stringify(p)})}
   }})();

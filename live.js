@@ -199,4 +199,11 @@ AFTER.enroute=()=>{if(!real())return _enSim();
       const d=hav([p.coords.latitude,p.coords.longitude],p0),e=$('#edist'),t=$('#eeta');if(!e)return;
       if(d<80){e.textContent='Llegaste';t.textContent='Estás en el punto de encuentro'}else{e.textContent=fmtD(d);t.textContent=Math.max(1,Math.round(d/1000/25*60))+' min a tu destino'}},
     err=>{const t=$('#eeta');if(t)t.textContent='Activa el permiso de ubicación para ver la distancia'},{enableHighAccuracy:true,maximumAge:3000,timeout:15000})};
+
+/* ---------- sesión: entrar directo si ya hay una guardada; cerrar sesión de verdad ---------- */
+const _goOut=ACT.go;
+ACT.go=d=>{if(d.to==='splash'&&S.screen==='perfil'){Live.stop();RodAPI.signOut();fresh()}_goOut(d)};
+if(RodAPI.session()){(async()=>{try{const p=await RodAPI.profile();if(!p||S.screen!=='splash')return;
+  newAccount();S.xp=p.xp||0;S.user={nombre:p.nombre,exp:p.exp};S.veh=Object.assign(S.veh,{cc:p.cc,marca:p.marca,placa:p.placa});
+  S.verStatus=p.ver_status;S.verified=p.ver_status==='ok';go('home')}catch(e){}})()}
 })();

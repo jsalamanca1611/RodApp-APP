@@ -48,3 +48,13 @@ En demo, solo la cédula de prueba **1000000009** devuelve "en revisión" y **10
 Con `supabaseUrl` y `anonKey` en `config.js`, `live.js` reemplaza las rodadas, el chat, el estado "listo", el inicio de la rodada y la ubicación por datos reales compartidos entre teléfonos (sondeo REST cada 2–5 s; sin bots). Requiere ejecutar `supabase/schema.sql` y luego `supabase/migrations/002_rodadas_en_vivo.sql`.
 Pendiente: el HUD del Modo Rodada sigue simulado; la verificación de antecedentes es simulada (`antecedentes:'piloto'`).
 Prueba local: `python3 mock.py` (ver `tests/live/`) levanta una base falsa y `t_live.py` abre dos navegadores.
+
+## APK de Android (Capacitor)
+La carpeta `android/` es un proyecto de Android Studio que empaqueta esta misma web (carpeta `www/`, generada por `npm run web`).
+1. Instala Node 18 o superior y ejecuta `npm install` una vez.
+2. Si cambiaste archivos de la web, ejecuta `npm run sync` (copia la web a `android/`). El repositorio ya trae la última copia.
+3. Abre la carpeta `android/` con Android Studio, espera a que termine "Gradle sync" y elige Build → Build Bundle(s) / APK(s) → Build APK(s).
+4. El archivo queda en `android/app/build/outputs/apk/debug/app-debug.apk`. Pásalo por WhatsApp o Drive y, en el teléfono, permite "instalar apps desconocidas".
+También hay un proceso en GitHub (pestaña Actions → APK) que construye el mismo archivo y lo deja para descargar.
+El APK de prueba va firmado con la clave de depuración; para Play Store hace falta una firma propia (release).
+Límite actual: la ubicación solo se envía con la app abierta y la pantalla encendida (siguiente versión: servicio en primer plano).
