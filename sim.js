@@ -1,6 +1,6 @@
 'use strict';
 /* RodApp · compañeros simulados de las rodadas de ejemplo.
-   Cada compañero sale de un barrio distinto de Bogotá y avanza despacio hacia el punto de encuentro (2,5–4,5 min en total, pensado para demostraciones).
+   Cada compañero sale de un barrio distinto de Bogotá y avanza despacio hacia el punto de encuentro (1,5–2,5 min en total, a 1–2 km del punto: pensado para demostraciones).
    Mientras viaja escribe en el chat: ya salí, voy a tanquear, hay trancón, los intercepto, ya casi llego, ya llegué.
    Todo se calcula con el reloj desde que la persona se une, así el mapa, la lista y el chat siempre cuentan la misma historia.
    Solo se usa en rodadas marcadas sim:true (ejemplo). Las rodadas reales nunca llevan compañeros simulados. */
@@ -21,12 +21,12 @@ const SimBots=(()=>{
   const state={};
   function build(r){
     const t0=Date.now(),p0=meet(r),names=r.part.filter(n=>n!=='Tú').slice(0,6),used=new Set();
-    const cand=BARRIOS.map(([b,ll])=>({b,ll,d:hav(ll,p0)})).filter(x=>x.d>4000&&x.d<26000);
-    const pool=cand.length>=names.length?cand:BARRIOS.map(([b,ll])=>({b,ll,d:hav(ll,p0)}));
+    const DIRS=['norte','nororiente','oriente','suroriente','sur','suroccidente','occidente','noroccidente'];
     const bots=names.map((n,i)=>{
-      const h=hash(n+'|'+r.id),sorted=pool.slice().sort((a,c)=>(hash(a.b+n)%97)-(hash(c.b+n)%97));
-      const o=sorted.find(x=>!used.has(x.b))||sorted[0];used.add(o.b);
-      const dur=(150+h%120)*1000,delay=(h%15)*1000,tank=i===1||h%3===0,tankF=.3+(h%25)/100,tankMs=25000+(h%20)*1000;
+      /* Demostración ágil: cada compañero sale a 0,9–1,8 km del punto, desde una dirección distinta. */
+      const h=hash(n+'|'+r.id),brg=((i*57+h%40)%360),dm=900+h%900,rad=brg*Math.PI/180;
+      const o={b:'la zona '+DIRS[Math.round(brg/45)%8],ll:[p0[0]+Math.cos(rad)*dm/111320,p0[1]+Math.sin(rad)*dm/(111320*Math.cos(p0[0]*Math.PI/180))]};
+      const dur=(75+h%35)*1000,delay=(h%6)*1000,tank=i===1||h%3===0,tankF=.3+(h%25)/100,tankMs=10000+(h%8)*1000;
       const tAt=f=>delay+f*dur+(tank&&f>tankF?tankMs:0);
       const v1=pick(VIAS,h),v2=pick(VIAS,h>>3),ev=[];
       ev.push([delay+3000+(h%9)*1000,pick(SALI,h).replace('{b}',o.b)]);

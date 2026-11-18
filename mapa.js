@@ -58,9 +58,9 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
   /* Demostración: sales de un barrio de Bogotá y avanzas hacia el punto de encuentro en ~3 min desde que arranca la rodada. */
   simUser(){this.simMe=true;this.simT=0;
     const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],c=[4.65,-74.08],dy=c[0]-p[0],dx=(c[1]-p[1])*Math.cos(p[0]*Math.PI/180),L=Math.hypot(dx,dy)||1;
-    this.simO=[p[0]+dy/L*2500/111320,p[1]+dx/L*2500/(111320*Math.cos(p[0]*Math.PI/180))];   /* a 2,5 km del punto, hacia el centro de Bogotá */
+    this.simO=[p[0]+dy/L*1000/111320,p[1]+dx/L*1000/(111320*Math.cos(p[0]*Math.PI/180))];   /* a 1 km del punto, hacia el centro de Bogotá */
     this.simStep()},
-  simStep(){const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],o=this.simO,DUR=170000;
+  simStep(){const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],o=this.simO,DUR=90000;
     if(!this.simT&&S.lobby&&S.lobby.started)this.simT=Date.now();
     const f=this.simT?Math.min(1,(Date.now()-this.simT)/DUR):0,la=o[0]+(p[0]-o[0])*f,ln=o[1]+(p[1]-o[1])*f;
     const dy=(p[0]-o[0]),dx=(p[1]-o[1])*Math.cos(o[0]*Math.PI/180),hd=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
