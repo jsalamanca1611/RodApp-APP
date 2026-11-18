@@ -52,7 +52,13 @@ const _ap=AFTER.perfil;AFTER.perfil=()=>{_ap&&_ap();refreshRides();every(refresh
 const _ad=AFTER.detalle;AFTER.detalle=()=>{_ad&&_ad();every(async()=>{const id=S.sel&&S.sel.id;await refreshRides();if(S.screen==='detalle'&&!S.rides.find(r=>r.id===id)){toast('Esa rodada ya no está disponible');go('home')}},4000)};
 
 /* ---------- publicar, unirse, listo, iniciar, salir ---------- */
-const msgErr=e=>e&&(e.status===403||e.code==='42501')?'Tu verificación aún no está aprobada':'No pudimos completar la acción. Intenta de nuevo.';
+/* Si la base rechaza por verificación (403), se reintenta la verificación del piloto una vez: sirve a cuentas que quedaron "pendientes" por un fallo de red al registrarse. */
+async function reverify(){try{await RodAPI.antecedentes({cedula:''})}catch(e){}
+  try{const p=await RodAPI.profile();if(p){S.verStatus=p.ver_status;S.verified=p.ver_status==='ok'}}catch(e){}
+  return S.verStatus==='ok'}
+const is403=e=>e&&(e.status===403||e.code==='42501');
+const msgErr=e=>is403(e)?(S.verStatus==='review'?'Tu verificación está en revisión':S.verStatus==='pending'?'Falta completar tu verificación de identidad':'No pudimos confirmar tu verificación'):'No pudimos completar la acción. Intenta de nuevo.';
+let _vr=0;
 const _publish=ACT.publish;
 ACT.publish=async()=>{const c=S.cr,e={};['nombre','cc','zona','fecha','hora','punto'].forEach(k=>{if(!c[k]||(k==='nombre'&&!c.nombre.trim()))e[k]=1});
   if(Object.keys(e).length)return _publish();
@@ -61,12 +67,12 @@ ACT.publish=async()=>{const c=S.cr,e={};['nombre','cc','zona','fecha','hora','pu
     await refreshRides(true);S.sel=S.rides.find(r=>r.id===row[0].id)||toRide(Object.assign(row[0],{ride_participants:[]}));
     S.cr={nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null};S.errs={};
     initLobby(true);toast('Rodada publicada');go('lobby')}
-  catch(err){toast(msgErr(err))}};
+  catch(err){if(is403(err)&&!_vr){_vr=1;const okv=await reverify();_vr=0;if(okv)return ACT.publish()}toast(msgErr(err))}};
 
 const _joinSim=ACT.join;
 ACT.join=async()=>{if(S.sel.sim)return _joinSim();if(gated())return toast('Tu verificación sigue en revisión');const r=S.sel;
   try{await rest('/ride_participants','POST',{ride_id:r.id,user_id:uid(),nombre:S.user.nombre,xp:S.xp},'return=minimal')}
-  catch(err){if(err.code!=='23505'){closeLayer();if(/llena/.test(err.message||'')){toast('La rodada se llenó');await refreshRides(true);return render()}return toast(msgErr(err))}}
+  catch(err){if(err.code!=='23505'){closeLayer();if(/llena/.test(err.message||'')){toast('La rodada se llenó');await refreshRides(true);return render()}if(is403(err)&&!_vr){_vr=1;const okv=await reverify();_vr=0;if(okv)return ACT.join()}return toast(msgErr(err))}}
   closeLayer();await refreshRides(true);S.sel=S.rides.find(x=>x.id===r.id)||r;toast('Estás dentro de la rodada');initLobby(false);go('lobby')};
 
 const _initSim=initLobby;
