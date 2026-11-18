@@ -78,7 +78,7 @@ const MapKit={map:null,mk:{},
       if(this.map){try{this.map.remove()}catch(e){}}this.mk={};this._sig=null;clearTimeout(this._bad);const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14},pitch:0,attributionControl:{compact:true}});
       this.follow=true;this.map.on('dragstart',()=>{this.follow=false});
       this._ok=false;const mp=this.map;
-      mp.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata')this._ok=true});   /* llegó al menos un mosaico */
+      mp.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata'&&e.sourceId!=='ruta'&&e.sourceId!=='acc')this._ok=true});   /* llegó al menos un mosaico */
       this._bad=setTimeout(()=>{if(this._ok||!this.map)return;try{this.map.setStyle(this.OSM)}catch(e){}this._bad=setTimeout(()=>{if(!this._ok)this.fallback()},6000)},5000);   /* si Carto no responde, prueba OpenStreetMap; si tampoco, esquema SVG */
       const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];
       const e=document.createElement('div');e.className='mkr meet';e.textContent='★';new maplibregl.Marker({element:e}).setLngLat([p0[1],p0[0]]).addTo(this.map);return true}catch(e){return false}},
@@ -153,7 +153,7 @@ const RouteMap={mem:{},
     try{await MapKit.lib();const c=await this.coords(r.rt);if(!$('#rhero')||S.screen!=='detalle')return;
       const lo=Math.min(...c.map(p=>p[0])),hi=Math.max(...c.map(p=>p[0])),la=Math.min(...c.map(p=>p[1])),ha=Math.max(...c.map(p=>p[1]));
       const map=new maplibregl.Map({container:el,style:st,bounds:[[lo,la],[hi,ha]],fitBoundsOptions:{padding:{top:50,bottom:34,left:34,right:34},maxZoom:13},interactive:false,attributionControl:{compact:true}});
-      let ok=false;map.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata')ok=true});
+      let ok=false;map.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata'&&e.sourceId!=='ruta')ok=true});
       const mk=(ll,html,cls)=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;new maplibregl.Marker({element:d}).setLngLat(ll).addTo(map)};
       mk(c[0],'★','mkr meet');mk(c[c.length-1],'⚑','mkr meet fin');
       this.put(map,c);
