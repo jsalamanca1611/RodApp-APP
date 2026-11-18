@@ -27,6 +27,7 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
   async start(){if(this.sharing)return;this.err=null;
     if(!S.consent.ubic){return openLocPrompt()}
     this.sharing=true;
+    if(S.sel&&S.sel.sim){this.simUser();this.seedPeers();return}   /* demostración: tu recorrido es simulado, no se usa el GPS */
     if('wakeLock' in navigator){try{this.wake=await navigator.wakeLock.request('screen')}catch(e){}}
     if(navigator.geolocation){
       const ok=p=>{const c=p.coords;this.simMe=false;this.me=[c.latitude,c.longitude,Date.now(),c.heading,c.speed==null?null:c.speed*3.6,c.accuracy];this.err=null;this.push(c);MapKit.draw()};
@@ -54,7 +55,18 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
     catch(e){this.err='sin conexión en vivo';MapKit.draw()}},
   /* Compañeros simulados (rodadas de ejemplo): salen de distintos barrios y avanzan despacio hacia el punto de encuentro. Ver sim.js. */
   seedPeers(){SimBots.init(S.sel);this.peers=SimBots.peers(S.sel)},
+  /* Demostración: sales de un barrio de Bogotá y avanzas hacia el punto de encuentro en ~3 min desde que arranca la rodada. */
+  simUser(){this.simMe=true;this.simT=0;
+    const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],c=[4.65,-74.08],dy=c[0]-p[0],dx=(c[1]-p[1])*Math.cos(p[0]*Math.PI/180),L=Math.hypot(dx,dy)||1;
+    this.simO=[p[0]+dy/L*2500/111320,p[1]+dx/L*2500/(111320*Math.cos(p[0]*Math.PI/180))];   /* a 2,5 km del punto, hacia el centro de Bogotá */
+    this.simStep()},
+  simStep(){const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],o=this.simO,DUR=170000;
+    if(!this.simT&&S.lobby&&S.lobby.started)this.simT=Date.now();
+    const f=this.simT?Math.min(1,(Date.now()-this.simT)/DUR):0,la=o[0]+(p[0]-o[0])*f,ln=o[1]+(p[1]-o[1])*f;
+    const dy=(p[0]-o[0]),dx=(p[1]-o[1])*Math.cos(o[0]*Math.PI/180),hd=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
+    const km=hav(o,p)/1000;this.me=[la,ln,Date.now(),hd,this.simT&&f<1?Math.round(km/(DUR/3600000)):0,8]},
   tick(){if(!this.sharing)return;if(S.sel)this.peers=SimBots.peers(S.sel);
+    if(this.simMe&&S.sel&&S.sel.sim&&this.simO)return this.simStep();
     if(this.simMe&&this.me){this.me=[this.me[0]+(Math.random()-.4)*.0004,this.me[1]+(Math.random()-.4)*.0004,Date.now(),null,28+Math.random()*10]}}};
 
 /* ---------- mapa: MapLibre si hay estilo configurado; si no, esquema SVG ---------- */
@@ -111,7 +123,7 @@ function peersHTML(){const rows=peerRows();if(!rows.length)return `<p class="sma
 function accHTML(){if(!Live.sharing)return '';
   if(Live.err&&!Live.me)return `<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}.${Live.err==='denegado'?' Activa el permiso de ubicación de RodApp en los ajustes del celular.':' Buscando de nuevo; sal a cielo abierto si estás bajo techo.'}</span></div>`;
   if(!Live.me)return '<p class="small" style="margin:0">Buscando tu ubicación…</p>';
-  if(Live.simMe)return `<div class="banner info">${I('warn',20)}<span>Mostramos una posición de ejemplo.</span></div>`;
+  if(Live.simMe)return `<div class="banner info">${I('warn',20)}<span>${S.sel&&S.sel.sim?'Demostración: tu recorrido es simulado y avanza solo cuando arranca la rodada.':'Mostramos una posición de ejemplo.'}</span></div>`;
   const a=Math.round(Live.me[5]||0);
   return a>150?`<div class="banner info">${I('warn',20)}<span>Ubicación aproximada (±${a} m): el círculo azul es el área real posible. Un computador no tiene GPS; en el celular será precisa.</span></div>`:`<p class="small" style="margin:0;color:#8FF0C0">Tu ubicación en vivo${a?' · ±'+a+' m':''}</p>`}
 function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
@@ -188,10 +200,13 @@ SCR.mapa=()=>{const r=S.sel,sh=Live.sharing;if(!Live.canSee())return SCR.mapaGat
    <div id="peers">${peersHTML()}</div>
    <p class="small" style="margin:0">Solo tu grupo ve tu ubicación, solo mientras compartes. Se apaga al terminar la rodada.</p>
    <button class="btn ghost" data-act="locStop">Dejar de compartir</button></div></div>`};
+/* En la demostración la rodada también arranca si estás viendo el mapa (el reloj de la sala se detiene al salir de ella). */
+function simStartCheck(){const L=S.lobby,r=S.sel;if(!L||!r||!r.sim||L.started||!L.ready)return;SimBots.init(r);
+  if(SimBots.readyFrac(r)>=.6){L.started=true;const m={n:r.host==='Tú'?r.part[0]:r.host,t:'Arrancamos. Todos al punto de encuentro.'};L.msgs.push(m);SimBots.log(r).push(m);beep(740,.2);toast('¡Arrancó la rodada! Ve al punto de encuentro.')}}
 AFTER.mapa=async()=>{clearST();
-  if(!Live.canSee()){every(()=>{if(Live.canSee())return render();const g=$('#gateacc');if(g&&Live.sharing)g.innerHTML=accHTML()||'<p class="small">Buscando tu ubicación…</p>'},1000);return}
+  if(!Live.canSee()){every(()=>{simStartCheck();if(Live.canSee())return render();const g=$('#gateacc');if(g&&Live.sharing)g.innerHTML=accHTML()||'<p class="small">Buscando tu ubicación…</p>'},1000);return}
   Live.tick();const el=$('#mapbox');const ok=await MapKit.maplibre(el);if(!ok)el.innerHTML=MapKit.svg();MapKit.draw();
-  every(()=>{if(!Live.canSee())return render();Live.tick();MapKit.draw()},2000)};
+  every(()=>{simStartCheck();if(!Live.canSee())return render();Live.tick();MapKit.draw()},1000)};
 
 function openLocPrompt(){openLayer(`<div class="scrim" data-act="closeLayer"></div><div class="sheetp sheet" role="dialog" aria-label="Ubicación"><div class="grab"></div><h2 class="t">Comparte tu ubicación con el grupo</h2>
  <p class="lead">Solo ven tu posición los participantes de esta rodada, mientras está activa. Puedes dejar de compartir cuando quieras. El navegador te pedirá permiso.</p>
