@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 srv=[subprocess.Popen(['python3','-m','http.server','8765','-d','.'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL),
      subprocess.Popen(['python3','tests/live/mock.py','8766'])]
 time.sleep(1.2)
-ov="window.RODAPP_OVERRIDE={supabaseUrl:'http://127.0.0.1:8766',anonKey:'k',mapStyle:''};"
+ov="window.RODAPP_OVERRIDE={supabaseUrl:'http://127.0.0.1:8766',anonKey:'k',mapStyle:'',rodadasEjemplo:true};"
 def boot(page,email,nombre,ced):
     page.goto('http://localhost:8765/index.html'); page.wait_for_timeout(500)
     page.evaluate("""async([e,n,c])=>{await RodAPI.signUp(e,'secreto1',{nombre:n,exp:'Intermedio'});
@@ -20,14 +20,14 @@ try:
     A,B=ca.new_page(),cb.new_page()
     for pg,n in((A,'A'),(B,'B')): pg.on('pageerror',lambda e,n=n:print('PAGEERR',n,e)); pg.add_init_script(ov)
     boot(A,'a@x.co','Ana Host','1010101010'); boot(B,'b@x.co','Beto Rider','2020202020')
-    chk('A solo ve rodadas de ejemplo (sim), ninguna real',A.evaluate("S.rides.filter(r=>!r.sim).length")==0 and A.evaluate("S.rides.length")>0)
+    chk('A solo ve rodadas de ejemplo (sim), ninguna real',A.evaluate("S.rides.filter(r=>!r.sim&&!r.oficial).length")==0 and A.evaluate("S.rides.length")>0)
     A.evaluate("Object.assign(S.cr,{nombre:'Prueba real',ruta:0,cc:'200–500',zona:'Calera',nivel:'Intermedio',fecha:FECHAS[1],hora:HORAS[3],cupo:4,punto:SPOTS[1]})")
     A.evaluate("ACT.publish()"); A.wait_for_timeout(800)
     chk('A en lobby tras publicar',A.evaluate("S.screen")=='lobby')
     chk('A aparece como participante único',A.evaluate("S.lobby.ppl.map(p=>p.n)")==['Tú'])
     B.evaluate("go('home')"); B.wait_for_timeout(1200)
-    chk('B ve la rodada de A',B.evaluate("S.rides.filter(r=>!r.sim).map(r=>r.name)")==['Prueba real'])
-    B.evaluate("ACT.open({id:S.rides.find(r=>!r.sim).id})"); B.evaluate("ACT.join()"); B.wait_for_timeout(1000)
+    chk('B ve la rodada de A',B.evaluate("S.rides.filter(r=>!r.sim&&!r.oficial).map(r=>r.name)")==['Prueba real'])
+    B.evaluate("ACT.open({id:S.rides.find(r=>!r.sim&&!r.oficial).id})"); B.evaluate("ACT.join()"); B.wait_for_timeout(1000)
     chk('B en lobby',B.evaluate("S.screen")=='lobby')
     A.wait_for_timeout(2500)
     chk('A ve a B en la sala',A.evaluate("S.lobby.ppl.map(p=>p.n)")==['Tú','Beto Rider'])

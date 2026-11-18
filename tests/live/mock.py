@@ -65,6 +65,12 @@ class H(BaseHTTPRequestHandler):
             st='flag' if d['cedula']=='1000000009' else 'error' if d['cedula']=='1000000007' else 'clear'
             if st!='error': DB['profiles'][me]['ver_status']='review' if (st=='flag' or d.get('alt')) else 'ok'
             return s.out(200,st)
+        if p=='/rest/v1/rpc/sembrar_rodadas':
+            if not any(x.get('oficial') for x in DB['rides']):
+                for nm,pt in(('La Calera – Guasca','Peaje Patios · Vía a La Calera'),('Chía – Cajicá','Portal del Norte · Autopista Norte')):
+                    NID['rides']+=1; DB['rides'].append({'id':NID['rides'],'nombre':nm,'zona':'Norte','cc':'<200','nivel':'Principiante','fecha':'Sáb 22 nov','hora':'7:00 AM','cupo':6,'punto':pt,'km':40,'rt':0,'host':None,'host_nombre':'Rodada oficial RodApp','oficial':True,'estado':'abierta','created_at':now_iso()})
+                return s.out(200,2)
+            return s.out(200,0)
         m=re.match(r'/rest/v1/(\w+)$',p)
         if not m: raise E(404,'nope')
         tb=m.group(1); flt=[(k,v[0]) for k,v in q.items() if k not in('select','order','limit','on_conflict')]
@@ -84,7 +90,7 @@ class H(BaseHTTPRequestHandler):
         if method=='GET':
             r=[dict(x) for x in rows if match(x,flt)]
             if tb=='rides':
-                for x in r: x['ride_participants']=[{k:v for k,v in pp.items() if k in('user_id','nombre','xp','listo')} for pp in DB['ride_participants'] if pp['ride_id']==x['id']]
+                for x in r: x['ride_participants']=[{k:v for k,v in pp.items() if k in('user_id','nombre','xp','listo','joined_at')} for pp in DB['ride_participants'] if pp['ride_id']==x['id']]
                 r.sort(key=lambda x:-x['id'])
             if tb in('ride_messages','ride_positions','ride_alerts'):
                 rid=int(dict(flt)['ride_id'].split('.')[1]);
@@ -103,7 +109,7 @@ class H(BaseHTTPRequestHandler):
                 if any(x['ride_id']==js['ride_id'] and x['user_id']==js['user_id'] for x in rows): raise E(409,'duplicate','23505')
                 rd=[x for x in DB['rides'] if x['id']==js['ride_id']][0]
                 if len([x for x in rows if x['ride_id']==rd['id']])>=rd['cupo']: raise E(400,'rodada llena','P0001')
-                rows.append(dict(js,listo=False)); return s.out(201)
+                rows.append(dict(js,listo=False,joined_at=now_iso()+'#%06d'%len(rows))); return s.out(201)
             if tb=='ride_messages':
                 if not member(js['ride_id'],me): raise E(403,'rls','42501')
                 NID['ride_messages']+=1; row=dict(js,id=NID['ride_messages'],user_id=me,created_at=now_iso()); rows.append(row); return s.out(201,[row])
@@ -119,7 +125,7 @@ class H(BaseHTTPRequestHandler):
         if method=='PATCH':
             for x in rows:
                 if match(x,flt):
-                    if tb=='rides' and x['host']!=me: continue
+                    if tb=='rides' and x['host']!=me and not (x.get('oficial') and any(pp['ride_id']==x['id'] and pp['user_id']==me for pp in DB['ride_participants']) and set(js)<={'estado'}): continue
                     if tb=='ride_participants' and x['user_id']!=me: continue
                     x.update(js)
             return s.out(204)

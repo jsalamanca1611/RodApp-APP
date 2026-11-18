@@ -297,7 +297,7 @@ function initLobby(host){
 }
 const readyN=()=>S.lobby.ppl.filter(p=>p.st==='ready').length;
 SCR.lobby=()=>{const L=S.lobby,r=S.sel;const rn=readyN();const total=L.ppl.length;
- return `<div class="scr light">${hdr('Sala de espera','detalle','<button class="btn link sm" style="min-height:44px" data-act="leave">'+(L.host?'Cancelar':'Salir')+'</button>')}
+ return `<div class="scr light">${hdr('Sala de espera','detalle','<button class="btn link sm" style="min-height:44px" data-act="leave">'+(L.host&&!r.oficial?'Cancelar':'Salir')+'</button>')}
  <div class="body" id="lbody"><div><h1 class="t" style="font-size:26px">${esc(r.name)}</h1><p class="lead" style="margin-top:4px">${r.fecha}, ${r.hora} · ${esc(r.punto)}</p><p class="small" id="lsync" style="margin-top:4px">${window.syncTxt?window.syncTxt():''}</p></div>
   <button class="btn sm ghost" data-act="mapa">${I('pin',18)}Ver mapa del grupo</button>
   ${L.started?`<div class="banner ok">${I('flag',20)}<span><b>${esc(first(r.host))} inició la rodada.</b> Ve al punto de encuentro.</span></div>`:''}
@@ -308,7 +308,7 @@ SCR.lobby=()=>{const L=S.lobby,r=S.sel;const rn=readyN();const total=L.ppl.lengt
  <div class="foot"><form class="chatin" id="cform"><input id="cin" placeholder="Escribe al grupo" autocomplete="off" aria-label="Mensaje"><button type="submit" aria-label="Enviar">${I('send',22)}</button></form>
  ${L.started?`<button class="btn" data-act="toEnroute">Ir al punto de encuentro</button>`:L.host?`<button class="btn" data-act="hostStart" id="hbtn" ${rn>=1?'':'disabled'}>Iniciar rodada</button>`:`<button class="btn ${L.ready?'':''}" data-act="ready" id="rbtn">${L.ready?'Listo para salir · toca para cancelar':'Estoy listo para salir'}</button>`}
 </div></div>`};
-const pplHTML=()=>S.lobby.ppl.map(p=>`<button class="prow" data-act="peek" data-n="${esc(p.n)}">${av(p.n)}<div class="n">${esc(p.n)} ${lchip(p.n)}${p.n===S.sel.host?'<small>Anfitrión</small>':''}</div><span class="ptag ${p.st==='ready'?'':'w'}">${p.st==='ready'?'Listo':p.st==='conf'?'Confirmó':'Esperando'}</span></button>`).join('');
+const pplHTML=()=>S.lobby.ppl.map(p=>`<button class="prow" data-act="peek" data-n="${esc(p.n)}">${av(p.n)}<div class="n">${esc(p.n)} ${lchip(p.n)}${p.n===S.sel.host?'<small>'+(S.sel.oficial?'Líder':'Anfitrión')+'</small>':''}</div><span class="ptag ${p.st==='ready'?'':'w'}">${p.st==='ready'?'Listo':p.st==='conf'?'Confirmó':'Esperando'}</span></button>`).join('');
 const chatHTML=()=>S.lobby.msgs.map(m=>m.me?`<div class="msg-b me">${esc(m.t)}</div>`:`<div class="msg-b"><small>${esc(m.n)} ${lchip(m.n)}</small>${esc(m.t)}</div>`).join('')||'<p class="small" style="margin:0">Aún no hay mensajes. Saluda al parche.</p>';
 function refreshLobby(){const L=S.lobby;if(S.screen!=='lobby')return;const p=$('#lppl');if(!p)return;p.innerHTML=pplHTML();const rn=readyN();$('#lcount').textContent=rn+' de '+L.ppl.length+' listos';$('#lmeter').style.width=(L.ppl.length?rn/L.ppl.length*100:0)+'%';const h=$('#hbtn');if(h)h.disabled=rn<1}
 function refreshChat(){const c=$('#lchat');if(c){c.innerHTML=chatHTML();const b=$('#lbody');b.scrollTop=b.scrollHeight}}

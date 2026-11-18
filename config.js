@@ -13,5 +13,5 @@ window.RODAPP_CONFIG=Object.assign({
   revision:'auto',
   mapStyle:'liberty',
   /* Rodadas de ejemplo con compañeros simulados (sim.js) junto a las reales. Ponlo en false cuando haya suficientes rodadas reales. */
-  rodadasEjemplo:true
+  rodadasEjemplo:false
 },window.RODAPP_OVERRIDE||{});
