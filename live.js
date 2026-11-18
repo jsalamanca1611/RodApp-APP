@@ -91,12 +91,16 @@ async function pollLobby(){const Lb=S.lobby;if(!Lb||S.screen!=='lobby'||busyL)re
     if(!rows.length){S.lobby=null;toast('El anfitrión canceló la rodada');await refreshRides(true);return go('home')}
     const r=toRide(rows[0]),mine=r.pp.find(p=>p.user_id===uid());
     if(!mine){S.lobby=null;toast('Ya no estás en esta rodada');await refreshRides(true);return go('home')}
-    S.sel=r;S.rides=S.rides.map(x=>x.id===r.id?r:x);Lb.ppl=pplOf(r);Lb.ready=!!mine.listo;
+    Lb.fail=0;Lb.okAt=Date.now();S.sel=r;S.rides=S.rides.map(x=>x.id===r.id?r:x);Lb.ppl=pplOf(r);Lb.ready=!!mine.listo;
     let fresh=false;msgs.forEach(m=>{Lb.lastMsg=Math.max(Lb.lastMsg,m.id);if(Lb.seen.has(m.id))return;Lb.seen.add(m.id);
       Lb.msgs.push(m.user_id===uid()?{me:1,t:m.texto}:{n:m.nombre,t:m.texto});fresh=true});
     if(r.estado==='en_ruta'&&!Lb.started){Lb.started=true;Lb.msgs.push({n:r.host,t:'Arrancamos. Todos al punto de encuentro.'});beep(740,.2);return render()}
     refreshLobby();if(fresh)refreshChat()}
-  catch(e){}finally{busyL=false}}
+  catch(e){Lb.fail=(Lb.fail||0)+1;Lb.errc=e&&e.status?e.status:'sin red'}finally{busyL=false;const s=$('#lsync');if(s&&S.lobby===Lb)s.innerHTML=window.syncTxt?window.syncTxt():""}}
+window.syncTxt=()=>{const Lb=S.lobby,r=S.sel;if(!Lb||!r)return '';
+  if(r.sim)return '<span style="color:#B26A00">Rodada de ejemplo: los compañeros son simulados. Para probar con un amigo, crea una rodada propia.</span>';
+  if(Lb.fail>=2)return '<span style="color:#C0392B">Sin conexión con la rodada ('+Lb.errc+'). Reintentando…</span>';
+  return 'Rodada n.º '+r.id+' · '+(Lb.ppl||[]).length+' en la sala · conectada'};
 const _afterSim=AFTER.lobby;
 AFTER.lobby=()=>{if(S.sel.sim)return _afterSim();const Lb=S.lobby;
   $('#cform').addEventListener('submit',async e=>{e.preventDefault();const i=$('#cin'),t=i.value.trim().slice(0,500);if(!t)return;i.value='';
@@ -120,7 +124,7 @@ async function fetchPeers(){if(busyF)return;busyF=true;
 Live.join=async function(){};                /* sin canal Realtime: se usa sondeo (solo rodadas reales) */
 Live.push=function(){};                      /* el envío ocurre en tick, cada 2 s */
 const _tickSim=Live.tick;
-Live.tick=function(){if(S.sel&&S.sel.sim)return _tickSim.call(this);if(!this.sharing){fetchPeers();return}sendPos();fetchPeers()};   /* rodadas reales: nunca compañeros simulados */
+Live.tick=function(){if(S.sel&&S.sel.sim)return _tickSim.call(this);if(!this.sharing)return;sendPos();if(this.me)fetchPeers()};   /* rodadas reales: nunca compañeros simulados */
 const _stop=Live.stop;Live.stop=function(){const was=this.sharing,id=this.rideId(),sim=S.sel&&S.sel.sim;_stop.call(this);warned=false;
   if(was&&id&&!sim)rest('/ride_positions?ride_id=eq.'+id+'&user_id=eq.'+uid(),'DELETE',null,'return=minimal').catch(()=>{})};
 

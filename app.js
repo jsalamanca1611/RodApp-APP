@@ -298,7 +298,7 @@ function initLobby(host){
 const readyN=()=>S.lobby.ppl.filter(p=>p.st==='ready').length;
 SCR.lobby=()=>{const L=S.lobby,r=S.sel;const rn=readyN();const total=L.ppl.length;
  return `<div class="scr light">${hdr('Sala de espera','detalle','<button class="btn link sm" style="min-height:44px" data-act="leave">'+(L.host?'Cancelar':'Salir')+'</button>')}
- <div class="body" id="lbody"><div><h1 class="t" style="font-size:26px">${esc(r.name)}</h1><p class="lead" style="margin-top:4px">${r.fecha}, ${r.hora} · ${esc(r.punto)}</p></div>
+ <div class="body" id="lbody"><div><h1 class="t" style="font-size:26px">${esc(r.name)}</h1><p class="lead" style="margin-top:4px">${r.fecha}, ${r.hora} · ${esc(r.punto)}</p><p class="small" id="lsync" style="margin-top:4px">${window.syncTxt?window.syncTxt():''}</p></div>
   <button class="btn sm ghost" data-act="mapa">${I('pin',18)}Ver mapa del grupo</button>
   ${L.started?`<div class="banner ok">${I('flag',20)}<span><b>${esc(first(r.host))} inició la rodada.</b> Ve al punto de encuentro.</span></div>`:''}
   <div><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b id="lcount">${rn} de ${total} listos</b><span class="small">${total} de ${r.cupo} cupos</span></div><div class="meter"><i id="lmeter" style="width:${total?rn/total*100:0}%"></i></div></div>

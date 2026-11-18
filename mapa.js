@@ -22,6 +22,8 @@ const STALE_MS=20000,LOST_MS=60000,LAG_M=1500;
 /* ---------- estado en vivo ---------- */
 const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null,sim:null,
   rideId:()=>S.sel?S.sel.id:0,
+  /* Reciprocidad: solo ves al grupo si tú también compartes una ubicación real (en la base de datos también se exige). */
+  canSee(){return this.sharing&&(!!this.me||!RodAPI.live)},
   async start(){if(this.sharing)return;this.err=null;
     if(!S.consent.ubic){return openLocPrompt()}
     this.sharing=true;
@@ -113,20 +115,31 @@ function accHTML(){if(!Live.sharing)return '';
 function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
   return `<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>${esc(first(out[0].n))} se quedó atrás.</b> ${out[0].a>LOST_MS?'Perdimos su señal hace más de 1 minuto.':'Está a '+fmtD(out[0].d)+'.'}</span></div>`}
 
-SCR.mapa=()=>{const r=S.sel,sh=Live.sharing;
+SCR.mapaGate=()=>{const r=S.sel,w=Live.sharing;
+  return `<div class="scr dark mapscr"><div class="gate">
+  <button class="mbtn mback" style="position:absolute;top:16px;left:16px" data-act="go" data-to="lobby" aria-label="Volver">${I('back',24)}</button>
+  <span class="ill" style="color:#2FD98D">${I('pin',44)}</span>
+  <h1 class="t" style="color:#fff">Comparte tu ubicación para ver al grupo</h1>
+  <p class="lead" style="color:#BFD0C7">En RodApp todos se ven entre todos: para ver dónde va cada compañero, tú también compartes la tuya. Solo tu grupo la ve, solo durante la rodada.</p>
+  ${w?`<div id="gateacc">${accHTML()||'<p class="small">Buscando tu ubicación…</p>'}</div>`:`<button class="btn" data-act="locStart">Compartir mi ubicación</button>`}
+  <div class="grow2" style="gap:10px;width:100%"><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('waze')}">Ir con Waze</a><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('gmaps')}">Google Maps</a></div>
+  <p class="small" style="margin:0;color:#9DB0A6">Salida · ${esc(r.punto)}</p>
+  </div></div>`};
+SCR.mapa=()=>{const r=S.sel,sh=Live.sharing;if(!Live.canSee())return SCR.mapaGate();
   return `<div class="scr dark mapscr"><div id="mapbox" class="mapfull"></div>
   <button class="mbtn mback" data-act="go" data-to="lobby" aria-label="Volver">${I('back',24)}</button>
-  ${sh?`<div class="spd" aria-live="off"><b id="spdv">—</b><span>km/h</span></div><button class="mbtn mrec" data-act="mapRec" aria-label="Centrar en mí">${I('pin',24)}</button>`:''}
+  <div class="spd" aria-live="off"><b id="spdv">—</b><span>km/h</span></div><button class="mbtn mrec" data-act="mapRec" aria-label="Centrar en mí">${I('pin',24)}</button>
   <div class="msheet"><div class="grab"></div><div id="lagban">${lagHTML()}</div>
    <div class="mhead"><div><b>${esc(r.name)}</b><span class="small" style="display:block">Salida · ${esc(r.punto)}</span></div></div>
    <div class="grow2" style="gap:10px"><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('waze')}">Ir con Waze</a><a class="btn sm ghost" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="${navLink('gmaps')}">Google Maps</a></div>
-   ${sh?'<div id="acc">'+accHTML()+'</div>':''}
-   ${sh?'':`<p class="small" style="margin:0;color:#9DB0A6">Ves el punto de encuentro (★). Comparte tu ubicación para verte con el grupo.</p>`}
+   <div id="acc">${accHTML()}</div>
    <div id="peers">${peersHTML()}</div>
    <p class="small" style="margin:0">Solo tu grupo ve tu ubicación, solo mientras compartes. Se apaga al terminar la rodada.</p>
-   ${sh?`<button class="btn ghost" data-act="locStop">Dejar de compartir</button>`:`<button class="btn" data-act="locStart">Compartir mi ubicación</button>`}</div></div>`};
-AFTER.mapa=async()=>{const el=$('#mapbox');if(S.sel&&S.sel.sim&&!Live.sharing){SimBots.init(S.sel);Live.peers=SimBots.peers(S.sel)}
-  const ok=await MapKit.maplibre(el);if(!ok)el.innerHTML=MapKit.svg();MapKit.draw();every(()=>{if(S.sel&&S.sel.sim&&!Live.sharing)Live.peers=SimBots.peers(S.sel);Live.tick();MapKit.draw()},2000)};
+   <button class="btn ghost" data-act="locStop">Dejar de compartir</button></div></div>`};
+AFTER.mapa=async()=>{clearST();
+  if(!Live.canSee()){every(()=>{if(Live.canSee())return render();const g=$('#gateacc');if(g&&Live.sharing)g.innerHTML=accHTML()||'<p class="small">Buscando tu ubicación…</p>'},1000);return}
+  Live.tick();const el=$('#mapbox');const ok=await MapKit.maplibre(el);if(!ok)el.innerHTML=MapKit.svg();MapKit.draw();
+  every(()=>{if(!Live.canSee())return render();Live.tick();MapKit.draw()},2000)};
 
 function openLocPrompt(){openLayer(`<div class="scrim" data-act="closeLayer"></div><div class="sheetp sheet" role="dialog" aria-label="Ubicación"><div class="grab"></div><h2 class="t">Comparte tu ubicación con el grupo</h2>
  <p class="lead">Solo ven tu posición los participantes de esta rodada, mientras está activa. Puedes dejar de compartir cuando quieras. El navegador te pedirá permiso.</p>

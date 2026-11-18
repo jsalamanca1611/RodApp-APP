@@ -89,6 +89,7 @@ class H(BaseHTTPRequestHandler):
             if tb in('ride_messages','ride_positions','ride_alerts'):
                 rid=int(dict(flt)['ride_id'].split('.')[1]);
                 if not member(rid,me): r=[]
+                if tb=='ride_positions' and not any(x['ride_id']==rid and x['user_id']==me for x in DB['ride_positions']): r=[x for x in r if x['user_id']==me]   # 005: sin compartir, no ves a los demás
             if tb in('ride_messages','ride_alerts'): r.sort(key=lambda x:x['id'])
             if 'limit' in q: r=r[:int(q['limit'][0])]
             return s.out(200,r)
