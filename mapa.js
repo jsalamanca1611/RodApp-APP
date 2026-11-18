@@ -84,11 +84,18 @@ const MapKit={map:null,mk:{},
       if(Live.me){const hd=Live.me[3]!=null&&!isNaN(Live.me[3])?Live.me[3]:(this._hd||0);this._hd=hd;
         mk('me',Live.me,'<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="rgba(0,122,255,.22)"/><path d="M22 6l11 28-11-6-11 6z" fill="#2FA8FF" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>','mkme',hd);
         if(this.follow&&!this._busy&&!(S.lobby&&!S.lobby.started))this.map.easeTo({center:[Live.me[1],Live.me[0]],bearing:hd,pitch:55,zoom:16.3,duration:900,padding:{top:0,bottom:240,left:0,right:0}})}
+      this.accCircle();
       if(S.lobby&&!S.lobby.started&&this.follow){const sig=Object.keys(Live.peers).length+(Live.me?'m':'');if(sig!==this._sig){this._sig=sig;const B=this.bounds();try{this.map.fitBounds([[B.w,B.s],[B.e,B.n]],{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14,duration:700})}catch(e){}}}
       Object.entries(Live.peers).forEach(([id,q])=>{const k=mk(id,q.ll,`<span>${esc(ini(q.n))}</span><em>${esc(first(q.n))}</em>`,'mkp');const a=Date.now()-q.t;k.getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
     else el.innerHTML=this.svg();
     const sp=$('#spdv');if(sp)sp.textContent=Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):'—';
     const l=$('#peers');if(l)l.innerHTML=peersHTML();const b=$('#lagban');if(b)b.innerHTML=lagHTML();const ac=$('#acc');if(ac)ac.innerHTML=accHTML()},
+  /* Círculo de precisión: muestra cuánto puede equivocarse la ubicación (en un PC, hasta kilómetros) */
+  accCircle(){const mp=this.map;if(!mp||!Live.me||!Live.me[5]||Live.simMe)return;const la=Live.me[0],ln=Live.me[1],r=Math.min(Live.me[5],8000),pts=[];
+    for(let i=0;i<=48;i++){const t=i/48*2*Math.PI;pts.push([ln+r/(111320*Math.cos(la*Math.PI/180))*Math.cos(t),la+r/110540*Math.sin(t)])}
+    const data={type:'Feature',geometry:{type:'Polygon',coordinates:[pts]}};
+    try{if(!mp.isStyleLoaded())return;const s=mp.getSource('acc');if(s)s.setData(data);else{mp.addSource('acc',{type:'geojson',data});
+      mp.addLayer({id:'acc-f',type:'fill',source:'acc',paint:{'fill-color':'#2F80ED','fill-opacity':.13}});mp.addLayer({id:'acc-l',type:'line',source:'acc',paint:{'line-color':'#2F80ED','line-width':1.2,'line-opacity':.6}})}}catch(e){}},
   fallback(){if(!this.map||this._ok)return;try{this.map.remove()}catch(e){}this.map=null;this.mk={};const el=$('#mapbox');if(el){const keep=el.querySelector('.empty');el.innerHTML=this.svg()}},
   leave(){clearTimeout(this._bad);this._bad=null;if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0;this.follow=true}}};
 
@@ -102,7 +109,7 @@ function accHTML(){if(!Live.sharing)return '';
   if(!Live.me)return '<p class="small" style="margin:0">Buscando tu ubicación…</p>';
   if(Live.simMe)return `<div class="banner info">${I('warn',20)}<span>Mostramos una posición de ejemplo.</span></div>`;
   const a=Math.round(Live.me[5]||0);
-  return a>150?`<div class="banner info">${I('warn',20)}<span>Ubicación aproximada (±${a} m). Activa la ubicación de alta precisión y sal a cielo abierto.</span></div>`:`<p class="small" style="margin:0;color:#8FF0C0">Tu ubicación en vivo${a?' · ±'+a+' m':''}</p>`}
+  return a>150?`<div class="banner info">${I('warn',20)}<span>Ubicación aproximada (±${a} m): el círculo azul es el área real posible. Un computador no tiene GPS; en el celular será precisa.</span></div>`:`<p class="small" style="margin:0;color:#8FF0C0">Tu ubicación en vivo${a?' · ±'+a+' m':''}</p>`}
 function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
   return `<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>${esc(first(out[0].n))} se quedó atrás.</b> ${out[0].a>LOST_MS?'Perdimos su señal hace más de 1 minuto.':'Está a '+fmtD(out[0].d)+'.'}</span></div>`}
 
