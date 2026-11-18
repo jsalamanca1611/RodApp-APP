@@ -179,6 +179,35 @@ const RouteMap={mem:{},
       setTimeout(()=>{if(!ok){try{map.remove()}catch(e){}const x=$('#rhero');if(x)x.style.display='none'}},9000)}catch(e){}}};
 const _ad0=AFTER.detalle;AFTER.detalle=()=>{_ad0&&_ad0();RouteMap.hero(S.sel)};
 
+/* ---------- Modo Rodada (demostración): mapa real que te sigue, con la ruta y tu grupo ---------- */
+const HudMap={map:null,mk:{},c:null,cum:null,ok:false,
+  async init(){this.stop();const el=document.querySelector('.hudmap'),st=MapKit.styleOf();if(!el||!st)return;
+    try{await MapKit.lib();const c=await RouteMap.coords(S.sel.rt);if(S.screen!=='hud'||!document.querySelector('.hudmap'))return;
+      this.c=c;this.cum=[0];for(let i=1;i<c.length;i++)this.cum.push(this.cum[i-1]+hav([c[i-1][1],c[i-1][0]],[c[i][1],c[i][0]]));
+      const box=document.createElement('div');box.id='hmap';box.style.cssText='position:absolute;inset:0;z-index:0';el.prepend(box);
+      const sv=el.querySelector('svg');if(sv)sv.style.visibility='hidden';
+      const me=this.at(300);this.ok=false;
+      this.map=new maplibregl.Map({container:box,style:st,center:[me[0],me[1]],zoom:16.2,pitch:55,bearing:me[2],interactive:false,attributionControl:false});
+      this.map.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata'&&e.sourceId!=='ruta')this.ok=true});
+      RouteMap.put(this.map,c);this.update();
+      this._t=setTimeout(()=>{if(!this.ok)this.stop()},9000)}catch(e){this.stop()}},
+  at(d){const L=this.cum[this.cum.length-1];d=Math.max(0,Math.min(L,d));let i=1;while(i<this.cum.length-1&&this.cum[i]<d)i++;
+    const a=this.c[i-1],b=this.c[i],f=(d-this.cum[i-1])/((this.cum[i]-this.cum[i-1])||1);
+    return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,(Math.atan2((b[0]-a[0])*Math.cos(a[1]*Math.PI/180),b[1]-a[1])*180/Math.PI+360)%360]},
+  update(){const R=S.run;if(!this.map||!R||!this.c)return;
+    const d=300+(R.p-.05)/.95*3000,me=this.at(d);
+    RIDERS.forEach(r=>{const off=r.n==='Tú'?0:(r.lag?r.off-R.drift:r.off)*8000,p=this.at(d+off),far=Math.abs(off)>500;
+      let k=this.mk[r.n];
+      if(!k){const e=document.createElement('div');
+        if(r.n==='Tú'){e.className='mkr';e.innerHTML='<svg width="48" height="48" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="rgba(47,217,141,.25)"/><path d="M22 6l11 28-11-6-11 6z" fill="#2FD98D" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>'}
+        else{e.className='mkp';e.innerHTML=`<span>${esc(ini(r.n))}</span><em>${esc(first(r.n))}</em>`}
+        k=this.mk[r.n]=new maplibregl.Marker({element:e,rotationAlignment:'viewport',pitchAlignment:'viewport'}).setLngLat([p[0],p[1]]).addTo(this.map)}
+      k.setLngLat([p[0],p[1]]);if(r.n!=='Tú')k.getElement().firstChild.style.background=far?'#FF9500':'';});
+    try{this.map.easeTo({center:[me[0],me[1]],bearing:me[2],duration:260,easing:t=>t})}catch(e){}},
+  stop(){clearTimeout(this._t);if(this.map){try{this.map.remove()}catch(e){}}this.map=null;this.mk={};const b=document.getElementById('hmap');if(b)b.remove();const sv=document.querySelector('.hudmap svg');if(sv)sv.style.visibility=''}};
+const _hudA=AFTER.hud;AFTER.hud=()=>{_hudA&&_hudA();if(S.sel&&(S.sel.sim||!RodAPI.live))HudMap.init()};
+const _hudT=hudTick;hudTick=function(){_hudT();if(HudMap.map)HudMap.update()};
+
 SCR.mapaGate=()=>{const r=S.sel,w=Live.sharing;
   return `<div class="scr dark mapscr"><div class="gate">
   <button class="mbtn mback" style="position:absolute;top:16px;left:16px" data-act="go" data-to="lobby" aria-label="Volver">${I('back',24)}</button>
@@ -220,4 +249,4 @@ Object.assign(ACT,{
   locStop:()=>{Live.stop();render()}
 });
 /* El permiso de ubicación se corta al terminar la rodada o cerrar sesión. */
-const _goMap=go;go=function(id){if(S.screen==='mapa'&&id!=='mapa')MapKit.leave();if(['resumen','splash','login'].includes(id))Live.stop();_goMap(id)};
+const _goMap=go;go=function(id){if(S.screen==='mapa'&&id!=='mapa')MapKit.leave();if(S.screen==='hud'&&id!=='hud')HudMap.stop();if(['resumen','splash','login'].includes(id))Live.stop();_goMap(id)};

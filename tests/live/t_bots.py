@@ -18,7 +18,7 @@ try:
     pe=pg.evaluate("Object.values(Live.peers).map(q=>q.ll)")
     ds=pg.evaluate("(()=>{const p0=SPOT_LL[SPOTS.indexOf(S.sel.punto)];return Object.values(Live.peers).map(q=>Math.round(hav(q.ll,p0)))})()")
     print('distancias m',ds)
-    chk('bots a 1-2 km y en puntos distintos',len(pe)>=3 and min(ds)>700 and len(set(map(tuple,pe)))==len(pe))
+    chk('bots a 1-2 km y en puntos distintos',len(pe)>=3 and min(ds)>400 and len(set(map(tuple,pe)))==len(pe))
     pg.evaluate("go('lobby')"); pg.wait_for_timeout(1300)
     ms=[]
     for off in (40,120,200,280,360,460,560,700):

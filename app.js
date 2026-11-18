@@ -354,7 +354,7 @@ function ridersSVG(){const R=S.run,route=RTS[S.sel.rt%3];
    else{const t=TINTS[hash(r.n)%TINTS.length];out+=`<circle cx="${pt[0]}" cy="${pt[1]}" r="7" fill="${out_?'#FF9500':'#fff'}" stroke="#0F1714" stroke-width="2"/><text x="${pt[0]}" y="${pt[1]+2.4}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#10151A" font-family="Arial">${ini(r.n)}</text>`}});
  return [out,lagName]}
 function hudTick(){const R=S.run;if(!R||S.screen!=='hud')return;
- if(R.p<1){R.p=Math.min(1,R.p+.0009);R.drift=Math.min(.14,R.drift+.00022)}
+ if(R.p<1){R.p=Math.min(1,R.p+.00063);R.drift=Math.min(.14,R.drift+.00015)}
  else if(!R.arrived){R.arrived=true;R.chip={g:1,t:'Llegaron al destino. Cuando todos estén, finaliza la rodada.'}}
  const [svg,lag]=ridersSVG();const g=$('#riders');if(g)g.innerHTML=svg;const me=pointAt(RTS[S.sel.rt%3],R.p);const sv=document.querySelector('.hudmap>svg');if(sv)sv.setAttribute('viewBox',(me[0]-60)+' '+(me[1]-62)+' 120 124');
  const el=Math.floor((Date.now()-R.t0)/1000);$('#hclock').textContent=fmtT(el);$('#hspd').textContent=R.arrived?'0 km/h':(58+Math.round(Math.sin(el/3)*6))+' km/h';
