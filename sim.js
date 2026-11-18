@@ -1,6 +1,6 @@
 'use strict';
 /* RodApp · compañeros simulados de las rodadas de ejemplo.
-   Cada compañero sale de un barrio distinto de Bogotá y avanza despacio hacia el punto de encuentro (5–9 min en total).
+   Cada compañero sale de un barrio distinto de Bogotá y avanza despacio hacia el punto de encuentro (2,5–4,5 min en total, pensado para demostraciones).
    Mientras viaja escribe en el chat: ya salí, voy a tanquear, hay trancón, los intercepto, ya casi llego, ya llegué.
    Todo se calcula con el reloj desde que la persona se une, así el mapa, la lista y el chat siempre cuentan la misma historia.
    Solo se usa en rodadas marcadas sim:true (ejemplo). Las rodadas reales nunca llevan compañeros simulados. */
@@ -26,7 +26,7 @@ const SimBots=(()=>{
     const bots=names.map((n,i)=>{
       const h=hash(n+'|'+r.id),sorted=pool.slice().sort((a,c)=>(hash(a.b+n)%97)-(hash(c.b+n)%97));
       const o=sorted.find(x=>!used.has(x.b))||sorted[0];used.add(o.b);
-      const dur=(300+h%240)*1000,delay=(h%25)*1000,tank=i===1||h%3===0,tankF=.3+(h%25)/100,tankMs=60000+(h%40)*1000;
+      const dur=(150+h%120)*1000,delay=(h%15)*1000,tank=i===1||h%3===0,tankF=.3+(h%25)/100,tankMs=25000+(h%20)*1000;
       const tAt=f=>delay+f*dur+(tank&&f>tankF?tankMs:0);
       const v1=pick(VIAS,h),v2=pick(VIAS,h>>3),ev=[];
       ev.push([delay+3000+(h%9)*1000,pick(SALI,h).replace('{b}',o.b)]);
@@ -47,6 +47,9 @@ const SimBots=(()=>{
     log:r=>get(r).log,
     reply:(r,t)=>{const s=get(r),o=s.bots;if(!o.length)return null;const h=hash(t);return{n:o[h%o.length].n,t:pick(RESP,h)}},
     arrived:(r,n)=>{const s=get(r),b=s.bots.find(x=>x.n===n);return !!b&&frac(b,Date.now(),s.t0)>=1},
+    /* En la sala, cada compañero confirma "listo" a los pocos segundos (el viaje real empieza al arrancar). */
+    ready:(r,n)=>{const s=get(r),b=s.bots.find(x=>x.n===n);return !!b&&Date.now()-s.t0>=(6+b.i*7)*1000},
+    readyFrac:r=>{const s=get(r),n=Date.now()-s.t0;return s.bots.length?s.bots.filter(b=>n>=(6+b.i*7)*1000).length/s.bots.length:1},
     arrivedFrac:r=>{const s=get(r),n=Date.now();return s.bots.length?s.bots.filter(b=>frac(b,n,s.t0)>=1).length/s.bots.length:1},
     /* Mensajes que ya les tocan a los compañeros. Cada uno se entrega una sola vez. */
     due:r=>{const s=get(r),el=Date.now()-s.t0,out=[];
@@ -58,14 +61,14 @@ const SimBots=(()=>{
         o[b.n]={n:b.n,ll:[b.o[0]+(s.p0[0]-b.o[0])*f+Math.sin(f*9+b.i)*w,b.o[1]+(s.p0[1]-b.o[1])*f+Math.cos(f*7+b.i)*w],t:now,v:f>=1||(b.tank&&f>b.tankF&&f<b.tankF+.001)?0:22+(b.i*5)%12}});
       return o},
     lobbyInit:(r,host)=>{const s=get(r);
-      S.lobby={host,ready:false,started:false,ppl:r.part.map(n=>({n,st:n==='Tú'?'conf':(SimBots.arrived(r,n)?'ready':'conf')})),msgs:s.log.slice(),rid:r.id}},
+      S.lobby={host,ready:false,started:false,ppl:r.part.map(n=>({n,st:n==='Tú'?'conf':(SimBots.ready(r,n)?'ready':'conf')})),msgs:s.log.slice(),rid:r.id}},
     lobbyAfter:()=>{const L=S.lobby,r=S.sel;SimBots.init(r);
       $('#cform').addEventListener('submit',e=>{e.preventDefault();const i=$('#cin'),t=i.value.trim();if(!t)return;L.msgs.push({me:1,t});i.value='';refreshChat();
         later(()=>{const m=SimBots.reply(r,t);if(!m)return;L.msgs.push(m);SimBots.log(r).push(m);refreshChat()},1500+hash(t)%1500)});
       const tick=()=>{if(S.screen!=='lobby'||S.lobby!==L)return;
         const nm=SimBots.due(r);nm.forEach(m=>L.msgs.push(m));
-        L.ppl.forEach(p=>{if(p.n!=='Tú')p.st=SimBots.arrived(r,p.n)?'ready':'conf'});
+        L.ppl.forEach(p=>{if(p.n!=='Tú')p.st=SimBots.ready(r,p.n)?'ready':'conf'});
         refreshLobby();if(nm.length){refreshChat();beep(520,.08)}
-        if(L.ready&&!L.started&&SimBots.arrivedFrac(r)>=.6){L.started=true;const m={n:r.host==='Tú'?r.part[0]:r.host,t:'Arrancamos. Todos al punto de encuentro.'};L.msgs.push(m);beep(740,.2);render()}};
+        if(L.ready&&!L.started&&SimBots.readyFrac(r)>=.6){L.started=true;const m={n:r.host==='Tú'?r.part[0]:r.host,t:'Arrancamos. Todos al punto de encuentro.'};L.msgs.push(m);beep(740,.2);render()}};
       tick();every(tick,1000)}
   }})();
