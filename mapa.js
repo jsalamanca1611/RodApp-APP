@@ -71,8 +71,10 @@ const MapKit={map:null,mk:{},
     <rect x="${X(p0)-7}" y="${Y(p0)-7}" width="14" height="14" rx="4" fill="#F5C451" stroke="#000" stroke-width="2"/><text x="${X(p0)}" y="${Y(p0)+24}" text-anchor="middle" font-size="11" fill="#F5C451" stroke="#000" stroke-width="3" paint-order="stroke">Encuentro</text>
     <path d="M${X(d)} ${Y(d)-4} l8 14 h-16z" fill="#fff"/>${peers}${Live.me?dot(Live.me,'#007AFF','Tú'):''}</svg>`},
   OSM:{version:8,sources:{o:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19,attribution:'© OpenStreetMap'}},layers:[{id:'o',type:'raster',source:'o'}]},
-  async maplibre(el){let st=RodAPI.cfg.mapStyle;if(!st)return false;if(st==='osm')st=this.OSM;else if(/^(liberty|bright|positron)$/.test(st))st='https://tiles.openfreemap.org/styles/'+st;
-    try{if(!window.maplibregl){await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='assets/vendor/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='assets/vendor/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})}
+  styleOf(){let st=RodAPI.cfg.mapStyle;if(!st)return null;if(st==='osm')return this.OSM;if(/^(liberty|bright|positron)$/.test(st))return 'https://tiles.openfreemap.org/styles/'+st;return st},
+  async lib(){if(window.maplibregl)return;await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='assets/vendor/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='assets/vendor/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})},
+  async maplibre(el){const st=this.styleOf();if(!st)return false;
+    try{await this.lib();
       if(this.map){try{this.map.remove()}catch(e){}}this.mk={};this._sig=null;clearTimeout(this._bad);const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14},pitch:0,attributionControl:{compact:true}});
       this.follow=true;this.map.on('dragstart',()=>{this.follow=false});
       this._ok=false;const mp=this.map;
@@ -86,7 +88,7 @@ const MapKit={map:null,mk:{},
       if(Live.me){const hd=Live.me[3]!=null&&!isNaN(Live.me[3])?Live.me[3]:(this._hd||0);this._hd=hd;
         mk('me',Live.me,'<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="rgba(0,122,255,.22)"/><path d="M22 6l11 28-11-6-11 6z" fill="#2FA8FF" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>','mkme',hd);
         if(this.follow&&!this._busy&&!(S.lobby&&!S.lobby.started))this.map.easeTo({center:[Live.me[1],Live.me[0]],bearing:hd,pitch:55,zoom:16.3,duration:900,padding:{top:0,bottom:240,left:0,right:0}})}
-      this.accCircle();
+      this.accCircle();RouteMap.attach(this.map,S.sel&&S.sel.rt);
       if(S.lobby&&!S.lobby.started&&this.follow){const sig=Object.keys(Live.peers).length+(Live.me?'m':'');if(sig!==this._sig){this._sig=sig;const B=this.bounds();try{this.map.fitBounds([[B.w,B.s],[B.e,B.n]],{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14,duration:700})}catch(e){}}}
       Object.entries(Live.peers).forEach(([id,q])=>{const k=mk(id,q.ll,`<span>${esc(ini(q.n))}</span><em>${esc(first(q.n))}</em>`,'mkp');const a=Date.now()-q.t;k.getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
     else el.innerHTML=this.svg();
@@ -114,6 +116,49 @@ function accHTML(){if(!Live.sharing)return '';
   return a>150?`<div class="banner info">${I('warn',20)}<span>Ubicación aproximada (±${a} m): el círculo azul es el área real posible. Un computador no tiene GPS; en el celular será precisa.</span></div>`:`<p class="small" style="margin:0;color:#8FF0C0">Tu ubicación en vivo${a?' · ±'+a+' m':''}</p>`}
 function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
   return `<div class="banner" style="background:rgba(255,149,0,.16);color:#FFC76B" role="status">${I('warn',20)}<span><b>${esc(first(out[0].n))} se quedó atrás.</b> ${out[0].a>LOST_MS?'Perdimos su señal hace más de 1 minuto.':'Está a '+fmtD(out[0].d)+'.'}</span></div>`}
+
+/* ---------- rutas reales por carretera ----------
+   Puntos de paso reales de cada ruta (lat,lng). El trazado por calles lo calcula OSRM (servicio público, sin clave) la primera vez
+   y se guarda en el dispositivo. Si no hay respuesta, se dibuja la línea entre los puntos de paso. */
+const RWP=[
+ [[4.7447,-73.9967],[4.7207,-73.9686],[4.8660,-73.8770]],
+ [[4.7536,-74.0458],[4.8600,-74.0580],[5.0221,-74.0053]],
+ [[4.5936,-74.1883],[4.5794,-74.2168],[4.4930,-74.2600]],
+ [[4.7447,-73.9967],[4.7207,-73.9686],[4.9060,-73.9410]],
+ [[4.7536,-74.0458],[4.8600,-74.0580],[4.9180,-74.0280]],
+ [[4.7536,-74.0458],[4.9060,-73.9410],[5.0450,-73.7970],[4.9340,-73.8330]],
+ [[4.7116,-74.1146],[4.8730,-74.1440],[4.9160,-74.0970]],
+ [[4.6296,-74.1448],[4.7060,-74.2300],[4.7330,-74.2640]]];
+const RouteMap={mem:{},
+  wp(rt){return RWP[(rt==null||rt<0?0:rt)%RWP.length]},
+  async coords(rt){rt=(rt==null||rt<0)?0:rt%RWP.length;if(this.mem[rt])return this.mem[rt];
+    try{const c=JSON.parse(localStorage.getItem('rodapp.route.v1.'+rt)||'null');if(c&&c.length>5)return this.mem[rt]=c}catch(e){}
+    const w=this.wp(rt),fb=w.map(p=>[p[1],p[0]]);
+    try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),9000);
+      const r=await fetch('https://router.project-osrm.org/route/v1/driving/'+w.map(p=>p[1]+','+p[0]).join(';')+'?overview=full&geometries=geojson',{signal:ac.signal});clearTimeout(t);
+      const j=await r.json();const c=j&&j.routes&&j.routes[0]&&j.routes[0].geometry&&j.routes[0].geometry.coordinates;
+      if(c&&c.length>5){try{localStorage.setItem('rodapp.route.v1.'+rt,JSON.stringify(c))}catch(e){}return this.mem[rt]=c}}catch(e){}
+    return fb},   /* sin guardar: se reintenta la próxima vez */
+  /* Añade la línea de la ruta al mapa (se vuelve a añadir si el estilo cambia). */
+  put(map,c){const add=()=>{try{if(!map.getSource('ruta')){map.addSource('ruta',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:c}}});
+      map.addLayer({id:'ruta-c',type:'line',source:'ruta',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#04130B','line-width':8,'line-opacity':.55}});
+      map.addLayer({id:'ruta-l',type:'line',source:'ruta',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2FD98D','line-width':4.5}})}}catch(e){}};
+    if(map.isStyleLoaded())add();else map.once('load',add)},
+  async attach(map,rt){if(!map||map._rt===rt+'')return;map._rt=rt+'';const c=await this.coords(rt);if(this._dead(map))return;this.put(map,c);
+    map.on('style.load',()=>this.put(map,c))},
+  _dead(map){return !map||!map.getCanvas||!map.getCanvas().isConnected},
+  gmaps(rt){const w=this.wp(rt),o=w[0],d=w[w.length-1],v=w.slice(1,-1);return 'https://www.google.com/maps/dir/?api=1&origin='+o[0]+','+o[1]+'&destination='+d[0]+','+d[1]+(v.length?'&waypoints='+v.map(p=>p[0]+','+p[1]).join('|'):'')+'&travelmode=driving'},
+  /* Mapa de la ficha de la rodada: ruta real sobre calles. Si no cargan los mosaicos, queda el esquema. */
+  async hero(r){const el=$('#rhero');const st=MapKit.styleOf();if(!el||!st||!r)return;
+    try{await MapKit.lib();const c=await this.coords(r.rt);if(!$('#rhero')||S.screen!=='detalle')return;
+      const lo=Math.min(...c.map(p=>p[0])),hi=Math.max(...c.map(p=>p[0])),la=Math.min(...c.map(p=>p[1])),ha=Math.max(...c.map(p=>p[1]));
+      const map=new maplibregl.Map({container:el,style:st,bounds:[[lo,la],[hi,ha]],fitBoundsOptions:{padding:{top:50,bottom:34,left:34,right:34},maxZoom:13},interactive:false,attributionControl:{compact:true}});
+      let ok=false;map.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata')ok=true});
+      const mk=(ll,html,cls)=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;new maplibregl.Marker({element:d}).setLngLat(ll).addTo(map)};
+      mk(c[0],'★','mkr meet');mk(c[c.length-1],'⚑','mkr meet fin');
+      this.put(map,c);
+      setTimeout(()=>{if(!ok){try{map.remove()}catch(e){}const x=$('#rhero');if(x)x.style.display='none'}},9000)}catch(e){}}};
+const _ad0=AFTER.detalle;AFTER.detalle=()=>{_ad0&&_ad0();RouteMap.hero(S.sel)};
 
 SCR.mapaGate=()=>{const r=S.sel,w=Live.sharing;
   return `<div class="scr dark mapscr"><div class="gate">

@@ -13,11 +13,13 @@ const SEL0='/rides?select=*,ride_participants(user_id,nombre,xp,listo)';
 /* ---------- estado inicial: sin rodadas ni personas de ejemplo ---------- */
 /* Rodadas de ejemplo (sim:true, id negativo para no chocar con las de la base). Son locales: nadie más las ve. */
 const EJ=RodAPI.cfg.rodadasEjemplo!==false;
-const SIMS=EJ?seed().map(r=>Object.assign(r,{id:-r.id})):[];
+/* Una sola rodada de demostración (compañeros simulados) para enseñar la app; el resto son reales. */
+const SIMS=(EJ?seed():seed().slice(0,1)).map(r=>Object.assign(r,{id:-r.id}));
+SIMS[0].name='RodApp prueba';SIMS[0].club='Demostración';SIMS[0].cupo=10;
 S.com.posts.forEach(p=>{if(!EJ)p.ride=0;else if(p.ride>0)p.ride=-p.ride});   /* sin ejemplos, las publicaciones no enlazan rodadas (sus ids ya no existen) */
-const setRides=real=>{S.rides=real.concat(SIMS)};
+const setRides=real=>{S.rides=SIMS.slice(0,1).concat(real,SIMS.slice(1))};
 setRides([]);S.login={email:'',pass:''};
-const _fresh2=fresh;fresh=function(){_fresh2();S.login={email:'',pass:''};if(EJ){SIMS.forEach(r=>{SimBots.reset(r);r.part=r.part.filter(n=>n!=='Tú')});S.com.posts.forEach(p=>{if(p.ride>0)p.ride=-p.ride})}S.com.posts.forEach(p=>{if(!EJ)p.ride=0});setRides([])};
+const _fresh2=fresh;fresh=function(){_fresh2();S.login={email:'',pass:''};{SIMS.forEach(r=>{SimBots.reset(r);r.part=r.part.filter(n=>n!=='Tú')});if(EJ)S.com.posts.forEach(p=>{if(p.ride>0)p.ride=-p.ride})}S.com.posts.forEach(p=>{if(!EJ)p.ride=0});setRides([])};
 
 /* ---------- conversión fila de base → rodada de la interfaz ---------- */
 function toRide(row){const me=uid();
@@ -114,7 +116,7 @@ async function pollLobby(){const Lb=S.lobby;if(!Lb||S.screen!=='lobby'||busyL)re
     refreshLobby();if(fresh)refreshChat()}
   catch(e){Lb.fail=(Lb.fail||0)+1;Lb.errc=e&&e.status?e.status:'sin red'}finally{busyL=false;const s=$('#lsync');if(s&&S.lobby===Lb)s.innerHTML=window.syncTxt?window.syncTxt():""}}
 window.syncTxt=()=>{const Lb=S.lobby,r=S.sel;if(!Lb||!r)return '';
-  if(r.sim)return '<span style="color:#B26A00">Rodada de ejemplo: los compañeros son simulados. Para probar con un amigo, crea una rodada propia.</span>';
+  if(r.sim)return '<span style="color:#B26A00">Rodada de demostración: los compañeros son simulados. Para probar con personas reales, únete a otra rodada.</span>';
   if(Lb.fail>=2)return '<span style="color:#C0392B">Sin conexión con la rodada ('+Lb.errc+'). Reintentando…</span>';
   return 'Rodada n.º '+r.id+' · '+(Lb.ppl||[]).length+' en la sala · conectada'};
 const _afterSim=AFTER.lobby;

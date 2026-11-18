@@ -206,7 +206,7 @@ SCR.done=()=>`<div class="scr light"><div class="body" style="justify-content:ce
 const tabbar=cur=>`<nav class="tabs" aria-label="Principal">${[['home','Inicio','home'],['comunidad','Comunidad','people'],['clubes','Clubes','trophy'],['perfil','Perfil','user']].map(([k,l,i])=>`<button data-act="go" data-to="${k}" ${cur===k?'aria-current="true"':''}>${I(i,24)}${l}</button>`).join('')}</nav>`;
 const lvl=n=>`<span class="lvl"><span class="b">${[1,2,3].map(i=>`<i class="${i<=NIV[n]?'f':''}"></i>`).join('')}</span>${n}</span>`;
 function rideCard(r){const c=cuposOf(r);const cl=c<=0?'full':c<=2?'low':'';
- return `<button class="ride" data-act="open" data-id="${r.id}"><div class="rtop"><h3>${esc(r.name)}</h3>${lvl(r.nivel)}</div>${r.sim&&RodAPI.live?'<div class="small" style="margin:-2px 0 6px;color:var(--mut)">Rodada de ejemplo · los compañeros son simulados</div>':''}
+ return `<button class="ride" data-act="open" data-id="${r.id}"><div class="rtop"><h3>${esc(r.name)}</h3>${lvl(r.nivel)}</div>${r.sim&&RodAPI.live?'<div class="small" style="margin:-2px 0 6px;color:var(--mut)">Demostración · los compañeros son simulados</div>':''}
  <div class="host">${r.ver?vb():''}<span>${esc(r.club)} · ${esc(r.host==='Tú'?'Tú':r.host)}</span></div>
  <div class="meta"><span>${I('clock',16)}${r.fecha}, ${r.hora}</span><span>${I('pin',16)}${r.zona}</span><span>${I('engine',16)}${r.cc} cc</span>${r.lugar&&!S.badges.includes(r.lugar)?`<span style="color:var(--neon)">${I('star',16)}Insignia ${BADGES.find(b=>b.k===r.lugar).n} · +${XP_INSIGNIA} XP</span>`:''}</div>
  <div class="rfoot">${avs(r.part)}<span class="cupos ${cl}">${c<=0?'Rodada llena':c===1?'Queda 1 cupo':c+' cupos'}</span></div></button>`}
@@ -279,7 +279,7 @@ SCR.detalle=()=>{const r=S.sel||S.rides[0];const c=cuposOf(r);const joined=r.par
  const exp=S.user&&S.user.exp;const warn=exp&&NIV[exp]<NIV[r.nivel]&&!joined;
  const route=RTS[r.rt%3];
  return `<div class="scr light">
- <div style="position:relative;height:230px;flex:none" class="map">${mapSVG(route,false)}<button class="ib" data-act="go" data-to="home" aria-label="Volver" style="position:absolute;left:12px;top:14px;background:rgba(0,0,0,.72);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)">${I('back',24)}</button></div>
+ <div style="position:relative;height:230px;flex:none" class="map">${mapSVG(route,false)}<div id="rhero" style="position:absolute;inset:0;background:#0B120F"></div><a class="rgm" target="_blank" rel="noopener" href="${typeof RouteMap!=='undefined'?RouteMap.gmaps(r.rt):'#'}">Abrir ruta en Google Maps</a><button class="ib" data-act="go" data-to="home" aria-label="Volver" style="position:absolute;left:12px;top:14px;background:rgba(0,0,0,.72);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)">${I('back',24)}</button></div>
  <div class="body" style="padding-top:18px">
   <div><h1 class="t" style="font-size:28px">${esc(r.name)}</h1><div class="host" style="margin-top:8px">${r.ver?vb():''}<span>${esc(r.club)} · Guía: ${esc(r.host)} ${lchip(r.host)}</span></div></div>
   <div class="facts"><div class="fact"><b>${r.hora}</b><span>${r.fecha}</span></div><div class="fact"><b>~${r.km} km</b><span>Ida y vuelta</span></div><div class="fact"><b>${r.cc} cc</b><span>Cilindraje</span></div><div class="fact">${lvl(r.nivel)}<span style="display:block;margin-top:2px">Nivel requerido</span></div></div>
