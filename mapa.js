@@ -121,28 +121,34 @@ function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().f
    Puntos de paso reales de cada ruta (lat,lng). El trazado por calles lo calcula OSRM (servicio público, sin clave) la primera vez
    y se guarda en el dispositivo. Si no hay respuesta, se dibuja la línea entre los puntos de paso. */
 const RWP=[
- [[4.7447,-73.9967],[4.7207,-73.9686],[4.8660,-73.8770]],
- [[4.7536,-74.0458],[4.8600,-74.0580],[5.0221,-74.0053]],
- [[4.5936,-74.1883],[4.5794,-74.2168],[4.4930,-74.2600]],
- [[4.7447,-73.9967],[4.7207,-73.9686],[4.9060,-73.9410]],
- [[4.7536,-74.0458],[4.8600,-74.0580],[4.9180,-74.0280]],
- [[4.7536,-74.0458],[4.9060,-73.9410],[5.0450,-73.7970],[4.9340,-73.8330]],
- [[4.7116,-74.1146],[4.8730,-74.1440],[4.9160,-74.0970]],
- [[4.6296,-74.1448],[4.7060,-74.2300],[4.7330,-74.2640]]];
+ [[4.7447,-73.9967],[4.8660,-73.8770]],
+ [[4.7536,-74.0458],[5.0221,-74.0053]],
+ [[4.5936,-74.1883],[4.4930,-74.2600]],
+ [[4.7447,-73.9967],[4.7207,-73.9686]],
+ [[4.7536,-74.0458],[4.9180,-74.0280]],
+ [[4.7536,-74.0458],[5.0450,-73.7970],[4.9340,-73.8330]],
+ [[4.7116,-74.1146],[4.9160,-74.0970]],
+ [[4.6296,-74.1448],[4.7330,-74.2640]]];
 const RouteMap={mem:{},
   wp(rt){return RWP[(rt==null||rt<0?0:rt)%RWP.length]},
   async coords(rt){rt=(rt==null||rt<0)?0:rt%RWP.length;if(this.mem[rt])return this.mem[rt];
-    try{const c=JSON.parse(localStorage.getItem('rodapp.route.v1.'+rt)||'null');if(c&&c.length>5)return this.mem[rt]=c}catch(e){}
+    try{const c=JSON.parse(localStorage.getItem('rodapp.route.v2.'+rt)||'null');if(c&&c.length>5)return this.mem[rt]=c}catch(e){}
     const w=this.wp(rt),fb=w.map(p=>[p[1],p[0]]);
     try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),9000);
       const r=await fetch('https://router.project-osrm.org/route/v1/driving/'+w.map(p=>p[1]+','+p[0]).join(';')+'?overview=full&geometries=geojson',{signal:ac.signal});clearTimeout(t);
       const j=await r.json();const c=j&&j.routes&&j.routes[0]&&j.routes[0].geometry&&j.routes[0].geometry.coordinates;
-      if(c&&c.length>5){try{localStorage.setItem('rodapp.route.v1.'+rt,JSON.stringify(c))}catch(e){}return this.mem[rt]=c}}catch(e){}
+      if(c&&c.length>5){try{localStorage.setItem('rodapp.route.v2.'+rt,JSON.stringify(c))}catch(e){}return this.mem[rt]=c}}catch(e){}
     return fb},   /* sin guardar: se reintenta la próxima vez */
   /* Añade la línea de la ruta al mapa (se vuelve a añadir si el estilo cambia). */
-  put(map,c){const add=()=>{try{if(!map.getSource('ruta')){map.addSource('ruta',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:c}}});
-      map.addLayer({id:'ruta-c',type:'line',source:'ruta',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#04130B','line-width':8,'line-opacity':.55}});
-      map.addLayer({id:'ruta-l',type:'line',source:'ruta',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2FD98D','line-width':4.5}})}}catch(e){}};
+  put(map,c){const add=()=>{try{
+      if(!map.hasImage('flecha')){const cv=document.createElement('canvas');cv.width=cv.height=40;const x=cv.getContext('2d');
+        x.lineWidth=7;x.lineCap='round';x.lineJoin='round';x.strokeStyle='#04130B';x.beginPath();x.moveTo(11,8);x.lineTo(27,20);x.lineTo(11,32);x.stroke();
+        x.lineWidth=4;x.strokeStyle='#fff';x.beginPath();x.moveTo(11,8);x.lineTo(27,20);x.lineTo(11,32);x.stroke();
+        map.addImage('flecha',x.getImageData(0,0,40,40))}
+      if(!map.getSource('ruta')){map.addSource('ruta',{type:'geojson',lineMetrics:true,data:{type:'Feature',geometry:{type:'LineString',coordinates:c}}});
+        map.addLayer({id:'ruta-c',type:'line',source:'ruta',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#04130B','line-width':5.5,'line-opacity':.85}});
+        map.addLayer({id:'ruta-l',type:'line',source:'ruta',layout:{'line-cap':'round','line-join':'round'},paint:{'line-width':3,'line-gradient':['interpolate',['linear'],['line-progress'],0,'#2FD98D',.5,'#7BE0FF',1,'#4C8DFF']}});
+        map.addLayer({id:'ruta-f',type:'symbol',source:'ruta',layout:{'symbol-placement':'line','symbol-spacing':64,'icon-image':'flecha','icon-size':.55,'icon-allow-overlap':true,'icon-ignore-placement':true,'icon-rotation-alignment':'map'}})}}catch(e){}};
     if(map.isStyleLoaded())add();else map.once('load',add)},
   async attach(map,rt){if(!map||map._rt===rt+'')return;map._rt=rt+'';const c=await this.coords(rt);if(this._dead(map))return;this.put(map,c);
     map.on('style.load',()=>this.put(map,c))},
@@ -156,6 +162,7 @@ const RouteMap={mem:{},
       let ok=false;map.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata'&&e.sourceId!=='ruta')ok=true});
       const mk=(ll,html,cls)=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;new maplibregl.Marker({element:d}).setLngLat(ll).addTo(map)};
       mk(c[0],'★','mkr meet');mk(c[c.length-1],'⚑','mkr meet fin');
+      const lg=document.createElement('div');lg.className='rleg';lg.innerHTML='<b>Ida</b> · ★ Salida → ⚑ Destino';el.appendChild(lg);
       this.put(map,c);
       setTimeout(()=>{if(!ok){try{map.remove()}catch(e){}const x=$('#rhero');if(x)x.style.display='none'}},9000)}catch(e){}}};
 const _ad0=AFTER.detalle;AFTER.detalle=()=>{_ad0&&_ad0();RouteMap.hero(S.sel)};
