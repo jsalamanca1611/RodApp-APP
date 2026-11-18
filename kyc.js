@@ -29,7 +29,7 @@ const Cam=(()=>{
   async function open(k){kind=k;const selfie=k==='selfie';
     const body=`<div class="camwrap"><video id="camv" playsinline muted autoplay></video><span class="camguide ${selfie?'oval':''}"></span>
       <p class="camhint">${selfie?'Centra tu cara. Sin casco, gorra ni gafas oscuras.':'Llena el recuadro con la cédula, con buena luz y sin reflejos. Espera a que enfoque.'}</p></div>
-      <div class="camfoot"><button class="btn ghost sm" data-act="camCancel">Cancelar</button><button class="btn" data-act="camShot" id="camshot">Tomar foto</button></div>`;
+      <div class="camfoot"><button class="btn ghost sm" data-act="camCancel">Cancelar</button>${selfie?'':'<button class="btn ghost sm" data-act="gal" data-k="'+k+'">Galería</button>'}<button class="btn" data-act="camShot" id="camshot">Tomar foto</button></div>`;
     openLayer(`<div class="camfull" role="dialog" aria-label="${selfie?'Tomar selfie':'Tomar foto de la cédula'}">${body}</div>`);
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return fallback('Tu navegador no deja usar la cámara aquí. Sube una foto.');
     try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:selfie?'user':{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
@@ -41,9 +41,14 @@ const Cam=(()=>{
         if(adv.length)await t.applyConstraints({advanced:adv})}catch(e){}}
     catch(e){fallback(e&&e.name==='NotAllowedError'?'No diste permiso a la cámara. Actívalo en el candado del navegador o sube una foto.':'No encontramos una cámara disponible. Sube una foto.')}}
   function fallback(msg){const h=$('.camwrap');if(!h)return;h.innerHTML=`<div class="camerr">${I('cam',34)}<p>${esc(msg)}</p></div>`;
-    const f=$('.camfoot');f.innerHTML=`<button class="btn ghost sm" data-act="camCancel">Cancelar</button><label class="btn upl">Subir foto<input type="file" accept="image/*" ${kind==='selfie'?'capture="user"':'capture="environment"'} id="camfile" hidden></label>`;
-    $('#camfile').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;const bmp=await createImageBitmap(file).catch(()=>null);if(!bmp)return done(null,'No pudimos abrir esa imagen.');
-      const cv=document.createElement('canvas');const r=Math.min(1,1280/bmp.width);cv.width=Math.round(bmp.width*r);cv.height=Math.round(bmp.height*r);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);finish(cv)})}
+    const f=$('.camfoot');f.innerHTML=`<button class="btn ghost sm" data-act="camCancel">Cancelar</button><label class="btn upl">${kind==='selfie'?'Tomar foto':'Cámara'}<input type="file" accept="image/*" ${kind==='selfie'?'capture="user"':'capture="environment"'} id="camfile" hidden></label>${kind==='selfie'?'':'<label class="btn ghost upl">Galería<input type="file" accept="image/*" id="galfile" hidden></label>'}`;
+    $('#camfile').addEventListener('change',e=>{const file=e.target.files[0];if(file)fromFile(file)});
+    const g=$('#galfile');if(g)g.addEventListener('change',e=>{const file=e.target.files[0];if(file)fromFile(file)})}
+  async function fromFile(file){const bmp=await createImageBitmap(file).catch(()=>null);if(!bmp)return done(null,'No pudimos abrir esa imagen. Usa una foto JPG o PNG.');
+    const cv=document.createElement('canvas');const r=Math.min(1,1600/Math.max(bmp.width,bmp.height));cv.width=Math.round(bmp.width*r);cv.height=Math.round(bmp.height*r);cv.getContext('2d').drawImage(bmp,0,0,cv.width,cv.height);finish(cv)}
+  /* Galería: solo para la cédula. La selfie siempre se toma en el momento para confirmar que eres tú. */
+  function pick(k){if(k==='selfie')return;kind=k;const i=document.createElement('input');i.type='file';i.accept='image/*';i.style.display='none';document.body.appendChild(i);
+    i.addEventListener('change',()=>{const f=i.files&&i.files[0];i.remove();if(f)fromFile(f)});i.addEventListener('cancel',()=>i.remove());i.click()}
   /* Recorta el fotograma al recuadro guía (la cédula ocupa más píxeles útiles) y deja 5 % de margen. */
   function frame(v){const vw=v.videoWidth,vh=v.videoHeight,wrap=$('.camwrap').getBoundingClientRect(),g=$('.camguide').getBoundingClientRect();
     let sx=0,sy=0,sw=vw,sh=vh;
@@ -67,7 +72,7 @@ const Cam=(()=>{
         else{K.ocrFails=(K.ocrFails||0)+1;K.front='error';K.msg=K.ocrFails>=2?'No pudimos leerla. Puedes escribir tus datos; una persona los revisará.':'No pudimos leer tu cédula. Busca más luz, sin reflejos, y encaja todo el documento.';if(K.ocrFails>=2){K.manual=true;K.ocrOk=false}}
         return render()}
       later(()=>{K[k]='ok';render()},500)}).catch(e=>{console.error('uploadKyc',e);K[k]='error';K.msg=e&&/\(\d{3}\)/.test(e.message||'')?'No pudimos guardar la foto: '+String(e.message).slice(0,80):'No pudimos subir la foto. Revisa tu conexión.';render()})}
-  return{open,stop,shot,cancel:()=>{stop();closeLayer()}}})();
+  return{open,stop,shot,pick,cancel:()=>{stop();closeLayer()}}})();
 const _closeLayer=closeLayer;closeLayer=function(){Cam.stop();_closeLayer()};
 
 /* ---------- pantallas ---------- */
@@ -84,10 +89,11 @@ SCR.consent=()=>{const c=S.consent,e=S.errs;
   <button class="btn link" style="min-height:44px;justify-content:flex-start;padding:0" data-act="kycAlt">No quiero dar la selfie: verificación manual</button></div>
   <div class="foot"><button class="btn" data-act="consentNext">Aceptar y continuar</button></div></div>`};
 
+const galBtn=k=>{const st=S.kyc[k];return st==='loading'||st==='ok'?'':`<button class="btn link" style="min-height:40px;justify-content:center;margin-top:-4px" data-act="gal" data-k="${k}">${I('img',16)} O súbela desde la galería</button>`};
 SCR.kyc=()=>{const k=S.kyc,e=S.errs;
   if(k.step===0){const ok=k.front==='ok'&&k.back==='ok';
     return `<div class="scr light">${hdr('','consent')}<div class="body">${prog(3,'Identidad')}<h1 class="t">Verifica tu cédula</h1><p class="lead">Validamos que eres tú para cuidar al grupo. No mostramos tu cédula a nadie.</p>
-    ${tile('front')}${tile('back')}
+    ${tile('front')}${galBtn('front')}${tile('back')}${galBtn('back')}
     ${(ok||k.manual&&k.back==='ok')?`<div class="gcard" role="group" aria-label="Revisa tus datos"><b>${k.ocrOk&&!k.manual?'Leímos esto de tu cédula. Revísalo.':'Escribe tus datos como aparecen en la cédula.'}</b>
      <div class="field ${e.nombre?'err':''}"><label for="k_n">Nombre completo</label><input id="k_n" autocomplete="off" data-bind="kyc.nombre" data-k="nombre" value="${esc(k.nombre)}" ${e.nombre?'aria-invalid="true" aria-describedby="m_n"':''}><span class="msg" id="m_n">Escribe nombres y apellidos.</span></div>
      <div class="field ${e.cedula?'err':''}"><label for="k_c">Número de cédula</label><input id="k_c" inputmode="numeric" autocomplete="off" maxlength="10" data-bind="kyc.cedula" data-k="cedula" data-num="1" value="${esc(k.cedula)}" ${e.cedula?'aria-invalid="true" aria-describedby="m_c"':''}><span class="msg" id="m_c">Escribe entre 6 y 10 números, sin puntos.</span></div>
@@ -124,6 +130,7 @@ Object.assign(ACT,{
   consentNext:()=>{const c=S.consent;if(!c.ident||!c.antec){S.errs={consent:1};return render()}S.errs={};S.kyc.alt=false;S.kyc.step=0;go('kyc')},
   kycAlt:()=>{const c=S.consent;if(!c.ident||!c.antec){S.errs={consent:1};return render()}S.errs={};S.kyc.alt=true;S.kyc.step=0;toast('Verificación manual elegida');go('kyc')},
   cap:d=>{const K=S.kyc;if(K[d.k]==='loading'||K[d.k]==='ok')return;Cam.open(d.k)},
+  gal:d=>{const K=S.kyc;if(K[d.k]==='loading'||K[d.k]==='ok')return;Cam.pick(d.k)},
   camShot:()=>Cam.shot(),camCancel:()=>Cam.cancel(),
   kycBack:()=>{if(S.kyc.alt||S.kyc.step===0){S.kyc.step=0;go('kyc')}else{S.kyc.step=0;render()}},
   kycNext:()=>{const K=S.kyc;if(K.step===0){const e={};if(String(K.nombre||'').trim().split(/\s+/).length<2)e.nombre=1;if(!/^\d{6,10}$/.test(K.cedula))e.cedula=1;if(Object.keys(e).length){S.errs=e;return render()}S.errs={};
