@@ -228,4 +228,33 @@ ACT.go=d=>{if(d.to==='splash'&&S.screen==='perfil'){Live.stop();RodAPI.signOut()
 if(RodAPI.session()){(async()=>{try{const p=await RodAPI.profile();if(!p||S.screen!=='splash')return;
   newAccount();S.xp=p.xp||0;S.user={nombre:p.nombre,exp:p.exp};S.veh=Object.assign(S.veh,{cc:p.cc,marca:p.marca,placa:p.placa});
   S.verStatus=p.ver_status;S.verified=p.ver_status==='ok';go('home')}catch(e){}})()}
+/* ---------- Comunidad real: las publicaciones y comentarios viven en Supabase y los ven todos ---------- */
+{const OFF=1e9,ago=t=>{const s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);return s<60?'Ahora':s<3600?'Hace '+Math.floor(s/60)+' min':s<86400?'Hace '+Math.floor(s/3600)+' h':'Hace '+Math.floor(s/86400)+' d'};
+ let sig='',busyC=false;
+ const mine=n=>n===(S.user&&S.user.nombre);
+ async function syncPosts(force){if(!RodAPI.live||!RodAPI.uid()||busyC)return;busyC=true;
+  try{const ps=await rest('/posts?select=id,user_id,nombre,zona,tema,texto,video,created_at&order=created_at.desc&limit=60');
+   const ids=ps.map(p=>p.id);let cs=[];
+   if(ids.length)cs=await rest('/post_comments?select=id,post_id,user_id,nombre,texto,created_at&post_id=in.('+ids.join(',')+')&order=created_at.asc&limit=400');
+   const s=JSON.stringify([ps.map(p=>p.id),cs.map(c=>c.id)]);
+   const old=new Map(S.com.posts.map(p=>[p.id,p]));
+   const list=ps.map(p=>{const o=old.get(OFF+p.id);return Object.assign({id:OFF+p.id,real:1,n:p.user_id===RodAPI.uid()?'Tú':p.nombre,zona:p.zona||'Bogotá',tema:p.tema,ago:ago(p.created_at),t:p.texto,likes:o?o.likes:0,conf:0,
+     c:cs.filter(c=>c.post_id===p.id).map(c=>({n:c.user_id===RodAPI.uid()?'Tú':c.nombre,t:c.texto}))},p.video?{rt:1,dur:'0:42'}:{})});
+   S.com.posts=EJ?list.concat(S.com.posts.filter(p=>!p.real&&!p._loc)):list;
+   if(force||s!==sig){sig=s;const typing=document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+     if(S.screen==='comunidad'&&!typing&&document.getElementById('layer').hidden!==false)render()}
+  }catch(e){}finally{busyC=false}}
+ const _ac=AFTER.comunidad;AFTER.comunidad=()=>{_ac&&_ac();clearST();syncPosts(true);every(syncPosts,4000)};
+ const _cpub=ACT.cpub;
+ ACT.cpub=async function(){const C=S.com,D=C.draft,t=$('#ctxt');if(t)D.txt=t.value;const tx=D.txt.trim(),tema=D.tema,vid=!!D.video;
+  if(!RodAPI.live){return _cpub.apply(this,arguments)}
+  if(!tema||tx.length<8){C.err=true;composeSheet();return}
+  try{await rest('/posts','POST',{nombre:S.user.nombre,zona:S.zonaMia,tema,texto:tx.slice(0,600),video:tema==='video'&&vid},'return=minimal')}
+  catch(e){toast('No se pudo publicar: '+String(e.message||e).slice(0,80));return}
+  C.draft={tema:null,txt:'',video:false};C.err=false;C.tema=null;closeLayer();toast('Publicación enviada a la comunidad');await syncPosts(true);render()};
+ document.addEventListener('submit',async e=>{const f=e.target.closest('[data-cform]');if(!f||!RodAPI.live)return;
+  const p=S.com.posts.find(x=>x.id==f.dataset.cform);if(!p||!p.real)return;const c=p.c[p.c.length-1];if(!c||c.n!=='Tú')return;
+  try{await rest('/post_comments','POST',{post_id:p.id-OFF,nombre:S.user.nombre,texto:c.t.slice(0,400)},'return=minimal')}catch(err){toast('No se pudo comentar');p.c.pop();render()}});
+ const _fr=fresh;fresh=function(){_fr();sig='';if(!EJ)S.com.posts=[]};
+ if(!EJ)S.com.posts=[];}
 })();

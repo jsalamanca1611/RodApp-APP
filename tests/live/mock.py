@@ -2,8 +2,8 @@ import json, re, sys, uuid, time, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, unquote
 from email.utils import formatdate
-DB={'profiles':{}, 'identity_docs':{}, 'consents':[], 'rides':[], 'ride_participants':[], 'ride_messages':[], 'ride_positions':[], 'ride_alerts':[]}
-USERS={}; TOK={}; NID={'rides':0,'ride_messages':0,'ride_alerts':0}; LOCK=threading.Lock()
+DB={'profiles':{}, 'identity_docs':{}, 'consents':[], 'rides':[], 'ride_participants':[], 'ride_messages':[], 'ride_positions':[], 'ride_alerts':[], 'posts':[], 'post_comments':[]}
+USERS={}; TOK={}; NID={'posts':0,'post_comments':0,'rides':0,'ride_messages':0,'ride_alerts':0}; LOCK=threading.Lock()
 def now_iso(): return time.strftime('%Y-%m-%dT%H:%M:%S',time.gmtime())+'.000000+00:00'
 def verified(u): return DB['profiles'].get(u,{}).get('ver_status')=='ok'
 def member(rid,u): return verified(u) and any(p['ride_id']==rid and p['user_id']==u for p in DB['ride_participants'])
@@ -87,6 +87,13 @@ class H(BaseHTTPRequestHandler):
             if method=='POST' and 'on_conflict' in q and 'id' in js: raise E(403,'permission denied for table profiles','42501')   # el upsert incluye id y no hay UPDATE sobre id
             if method=='POST': DB['profiles'].setdefault(me,{'ver_status':'pending','xp':0}).update({k:v for k,v in js.items() if k in('id','nombre','exp','cc','tipo','marca','placa')}); return s.out(201)
         rows=DB[tb]
+        if tb in('posts','post_comments'):
+            if method=='GET':
+                r=[dict(x) for x in rows]
+                if tb=='post_comments' and 'post_id' in dict(flt):
+                    ids=dict(flt)['post_id'][4:].strip('()').split(','); r=[x for x in r if str(x['post_id']) in ids]
+                r.sort(key=lambda x:x['id'],reverse=(tb=='posts')); return s.out(200,r)
+            NID[tb]+=1; row=dict(js,id=NID[tb],user_id=me,created_at=now_iso()); rows.append(row); return s.out(201)
         if method=='GET':
             r=[dict(x) for x in rows if match(x,flt)]
             if tb=='rides':
