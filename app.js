@@ -258,7 +258,7 @@ SCR.perfil=()=>{const u=S.user||{nombre:'Camilo Rojas',exp:'Intermedio'},xi=xpIn
   <div><h2 class="t" style="margin-bottom:10px">Historial de rodadas</h2>${(S.hist&&S.hist.length)?`<div class="cards" style="gap:8px">${S.hist.map(h=>`<div class="fact" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b style="font-size:15px">${esc(h.nombre)}</b><span>${new Date(h.created_at).toLocaleDateString('es-CO',{day:'numeric',month:'short'})} · ${h.km||0} km</span></div><b style="color:var(--neon)">+${h.xp} XP</b></div>`).join('')}</div>`:`<p class="small">Aún no has terminado ninguna rodada. Cuando termines una, aparece aquí con su XP.</p>`}</div>
   <div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><h2 class="t">Insignias</h2><span class="small">${S.badges.length} de ${BADGES.length}</span></div>
    <div class="bgrid">${BADGES.map(b=>{const o=S.badges.includes(b.k);return `<button class="bdg ${o?'':'lock'}" data-act="badge" data-k="${b.k}" aria-label="Insignia ${b.n}, ${o?'ganada':'bloqueada, mínimo '+b.km+' km'}">${badgeSVG(b,o,64)}<b>${b.n}</b><span>${o?'Ganada':'Mín. '+b.km+' km'}</span></button>`}).join('')}</div></div>
-  <button class="btn ghost" data-act="go" data-to="splash">Cerrar sesión</button></div>${tabbar('perfil')}</div>`};
+  <button class="btn ghost" data-act="go" data-to="splash">Cerrar sesión</button><p class="small" style="text-align:center;margin:0">Versión 19-nov-c · incluye editor de rutas</p></div>${tabbar('perfil')}</div>`};
 
 /* ----- crear ----- */
 SCR.crear=()=>{const c=S.cr,e=S.errs;
