@@ -3,7 +3,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, unquote
 from email.utils import formatdate
 DB={'profiles':{}, 'identity_docs':{}, 'consents':[], 'rides':[], 'ride_participants':[], 'ride_messages':[], 'ride_positions':[], 'ride_alerts':[], 'posts':[], 'post_comments':[]}
-USERS={}; TOK={}; NID={'posts':0,'post_comments':0,'rides':0,'ride_messages':0,'ride_alerts':0}; LOCK=threading.Lock()
+HIST={}; RATE=[]; USERS={}; TOK={}; NID={'posts':0,'post_comments':0,'rides':0,'ride_messages':0,'ride_alerts':0}; LOCK=threading.Lock()
 def now_iso(): return time.strftime('%Y-%m-%dT%H:%M:%S',time.gmtime())+'.000000+00:00'
 def verified(u): return DB['profiles'].get(u,{}).get('ver_status')=='ok'
 def member(rid,u): return verified(u) and any(p['ride_id']==rid and p['user_id']==u for p in DB['ride_participants'])
@@ -71,6 +71,17 @@ class H(BaseHTTPRequestHandler):
                     NID['rides']+=1; DB['rides'].append({'id':NID['rides'],'nombre':nm,'zona':'Norte','cc':'<200','nivel':'Principiante','fecha':'Sáb 22 nov','hora':'7:00 AM','cupo':6,'punto':pt,'km':40,'rt':0,'host':None,'host_nombre':'Rodada oficial RodApp','oficial':True,'estado':'abierta','created_at':now_iso()})
                 return s.out(200,2)
             return s.out(200,0)
+        if p=='/rest/v1/rpc/asegurar_demo':
+            d=[x for x in DB['rides'] if x.get('nombre')=='RodApp prueba' and x.get('estado')!='terminada']
+            if not d:
+                NID['rides']+=1; DB['rides'].append({'id':NID['rides'],'nombre':'RodApp prueba','zona':'Norte','cc':'<200','nivel':'Principiante','fecha':'Hoy','hora':'Ahora','cupo':10,'punto':'Portal del Norte · Autopista Norte','km':6,'rt':0,'host':None,'host_nombre':'Demostración','oficial':True,'estado':'abierta','created_at':now_iso()}); return s.out(200,NID['rides'])
+            return s.out(200,d[0]['id'])
+        if p=='/rest/v1/rpc/registrar_rodada':
+            HIST.setdefault(me,[]).append({'nombre':js['p_nombre'],'km':js['p_km'],'xp':js['p_xp'],'badge':js['p_badge'],'created_at':now_iso()}); return s.out(200,None)
+        if p=='/rest/v1/rpc/calificar':
+            RATE.append(js); return s.out(200,None)
+        if p=='/rest/v1/rpc/mi_resumen':
+            h=HIST.get(me,[]); return s.out(200,{'xp':sum(x['xp'] for x in h),'rodadas':len(h),'rating':None,'hist':h[::-1]})
         m=re.match(r'/rest/v1/(\w+)$',p)
         if not m: raise E(404,'nope')
         tb=m.group(1); flt=[(k,v[0]) for k,v in q.items() if k not in('select','order','limit','on_conflict')]

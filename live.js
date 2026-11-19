@@ -17,7 +17,7 @@ const EJ=RodAPI.cfg.rodadasEjemplo!==false;
 const SIMS=(EJ?seed():seed().slice(0,1)).map(r=>Object.assign(r,{id:-r.id}));
 SIMS[0].name='RodApp prueba';SIMS[0].club='Demostración';SIMS[0].cupo=10;
 S.com.posts.forEach(p=>{if(!EJ)p.ride=0;else if(p.ride>0)p.ride=-p.ride});   /* sin ejemplos, las publicaciones no enlazan rodadas (sus ids ya no existen) */
-const setRides=real=>{S.rides=SIMS.slice(0,1).concat(real,SIMS.slice(1))};
+const setRides=real=>{const d=real.filter(r=>r.demo),o=real.filter(r=>!r.demo);S.rides=(d.length?d:SIMS.slice(0,1)).concat(o,SIMS.slice(1))};   /* la prueba real va primero; si la base aún no la tiene, la local */
 setRides([]);S.login={email:'',pass:''};
 const _fresh2=fresh;fresh=function(){_fresh2();S.login={email:'',pass:''};{SIMS.forEach(r=>{SimBots.reset(r);r.part=r.part.filter(n=>n!=='Tú')});if(EJ)S.com.posts.forEach(p=>{if(p.ride>0)p.ride=-p.ride})}S.com.posts.forEach(p=>{if(!EJ)p.ride=0});setRides([])};
 
@@ -32,13 +32,15 @@ function toRide(row){const me=uid();
   const nm=p=>p.user_id===me?'Tú':p.nombre,mine=hostId===me&&hostId!=null;
   return{id:row.id,name:row.nombre,zona:row.zona,cc:row.cc,nivel:row.nivel,fecha:row.fecha||'',hora:row.hora||'',cupo:row.cupo,part:pp.map(nm),pp,
     punto:row.punto,km:row.km||0,rt:row.rt||0,host:mine?'Tú':(row.oficial?(leader?leader.nombre:'Equipo RodApp'):(row.host_nombre||'Anfitrión')),hostId,oficial:!!row.oficial,
-    club:row.oficial?'Rodada oficial RodApp':(mine?'Tu rodada':'Comunidad RodApp'),ver:true,estado:row.estado}}
+    club:row.oficial?'Rodada oficial RodApp':(mine?'Tu rodada':'Comunidad RodApp'),ver:true,estado:row.estado,
+    demo:!!row.oficial&&row.nombre==='RodApp prueba',cr:Array.isArray(row.ruta)&&row.ruta.length>1?row.ruta:null}}
 const pplOf=r=>r.pp.map(p=>({n:p.user_id===uid()?'Tú':p.nombre,st:(p.listo||p.user_id===r.hostId)?'ready':'conf',uid:p.user_id}));
 const visible=r=>r.estado==='abierta'||r.part.includes('Tú');
 const sigOf=rs=>rs.map(r=>r.id+':'+r.estado+':'+r.pp.map(p=>p.user_id).join(',')).join('|');
 
 /* Las rodadas oficiales se siembran desde la base (función sembrar_rodadas, migración 006). Idempotente; se intenta al abrir y cada hora. */
-let seeded=0;async function sembrar(){if(Date.now()-seeded<36e5)return;seeded=Date.now();try{await rest('/rpc/sembrar_rodadas','POST',{})}catch(e){}}
+let seeded=0,demoAt=0;async function sembrar(){if(Date.now()-demoAt>6e4){demoAt=Date.now();try{await rest('/rpc/asegurar_demo','POST',{})}catch(e){}}
+  if(Date.now()-seeded<36e5)return;seeded=Date.now();try{await rest('/rpc/sembrar_rodadas','POST',{})}catch(e){}}
 let sig='',busyR=false;
 async function refreshRides(force){if(busyR&&!force)return;busyR=true;
   try{await sembrar();let rows;try{rows=await rest(SEL+'&estado=neq.terminada&order=created_at.desc&limit=60')}catch(e){if(e&&e.status===400&&SEL!==SEL0){SEL=SEL0;rows=await rest(SEL+'&estado=neq.terminada&order=created_at.desc&limit=60')}else throw e}
@@ -94,7 +96,7 @@ ACT.leave=async()=>{const r=S.sel;if(r.sim){Live.stop();return _leaveSim()}
   try{if(r.host==='Tú'&&!r.oficial)await rest('/rides?id=eq.'+r.id,'DELETE',null,'return=minimal');
     else{await rest('/ride_positions?ride_id=eq.'+r.id+'&user_id=eq.'+uid(),'DELETE',null,'return=minimal').catch(()=>{});await rest('/ride_participants?ride_id=eq.'+r.id+'&user_id=eq.'+uid(),'DELETE',null,'return=minimal')}}
   catch(e){return toast('No pudimos completar la acción. Intenta de nuevo.')}
-  S.lobby=null;Live.stop();toast(r.host==='Tú'&&!r.oficial?'Rodada cancelada':'Saliste de la rodada');await refreshRides(true);go('home')};
+  S.lobby=null;Live.stop();if(r.demo)rest('/rpc/asegurar_demo','POST',{}).catch(()=>{});toast(r.host==='Tú'&&!r.oficial?'Rodada cancelada':'Saliste de la rodada');await refreshRides(true);go('home')};
 
 const _end=ACT.end;ACT.end=()=>{const r=S.sel;if(r&&!r.sim&&r.host==='Tú')rest('/rides?id=eq.'+r.id,'PATCH',{estado:'terminada'},'return=minimal').catch(()=>{});_end()};
 const _sendRate=ACT.sendRate;ACT.sendRate=()=>{const r=S.sel;_sendRate();if(r&&!r.sim&&(r.host!=='Tú'||r.oficial))rest('/ride_participants?ride_id=eq.'+r.id+'&user_id=eq.'+uid(),'DELETE',null,'return=minimal').catch(()=>{})};
@@ -120,16 +122,16 @@ window.syncTxt=()=>{const Lb=S.lobby,r=S.sel;if(!Lb||!r)return '';
   if(Lb.fail>=2)return '<span style="color:#C0392B">Sin conexión con la rodada ('+Lb.errc+'). Reintentando…</span>';
   return 'Rodada n.º '+r.id+' · '+(Lb.ppl||[]).length+' en la sala · conectada'};
 const _afterSim=AFTER.lobby;
-AFTER.lobby=()=>{if(S.sel.sim)return _afterSim();const Lb=S.lobby;
+AFTER.lobby=()=>{if(S.sel.sim)return _afterSim();clearST();const Lb=S.lobby;
   $('#cform').addEventListener('submit',async e=>{e.preventDefault();const i=$('#cin'),t=i.value.trim().slice(0,500);if(!t)return;i.value='';
     const m={me:1,t};Lb.msgs.push(m);refreshChat();
     try{const row=await rest('/ride_messages','POST',{ride_id:S.sel.id,nombre:S.user.nombre,texto:t},'return=representation');Lb.seen.add(row[0].id)}
     catch(err){Lb.msgs.splice(Lb.msgs.indexOf(m),1);refreshChat();toast('No se envió el mensaje')}});
-  pollLobby();every(pollLobby,2000)};
+  pollLobby();every(pollLobby,2000);lobbyMapInit()};
 
 /* ---------- ubicación en vivo: la última posición de cada participante ---------- */
 let busyP=false,busyF=false,warned=false;
-async function sendPos(){const m=Live.me;if(!m||Live.simMe||busyP)return;busyP=true;
+async function sendPos(){const m=Live.me;if(!m||(Live.simMe&&!(S.sel&&S.sel.demo))||busyP)return;busyP=true;
   try{await rest('/ride_positions?on_conflict=ride_id,user_id','POST',{ride_id:Live.rideId(),user_id:uid(),nombre:S.user.nombre,lat:m[0],lng:m[1],
       speed:m[4]==null?null:m[4],heading:m[3]==null||isNaN(m[3])?null:m[3]},'resolution=merge-duplicates,return=minimal')}
   catch(e){if(!warned){warned=true;toast('No pudimos compartir tu ubicación')}}finally{busyP=false}}
@@ -142,7 +144,7 @@ async function fetchPeers(){if(busyF)return;busyF=true;
 Live.join=async function(){};                /* sin canal Realtime: se usa sondeo (solo rodadas reales) */
 Live.push=function(){};                      /* el envío ocurre en tick, cada 2 s */
 const _tickSim=Live.tick;
-Live.tick=function(){if(S.sel&&S.sel.sim)return _tickSim.call(this);if(!this.sharing)return;sendPos();if(this.me)fetchPeers()};   /* rodadas reales: nunca compañeros simulados */
+Live.tick=function(){if(S.sel&&S.sel.sim)return _tickSim.call(this);if(!this.sharing)return;if(S.sel&&S.sel.demo&&this.simO)this.simStep();sendPos();if(this.me)fetchPeers()};   /* rodadas reales: nunca compañeros simulados */
 const _stop=Live.stop;Live.stop=function(){const was=this.sharing,id=this.rideId(),sim=S.sel&&S.sel.sim;_stop.call(this);warned=false;
   if(was&&id&&!sim)rest('/ride_positions?ride_id=eq.'+id+'&user_id=eq.'+uid(),'DELETE',null,'return=minimal').catch(()=>{})};
 
@@ -227,7 +229,29 @@ const _goOut=ACT.go;
 ACT.go=d=>{if(d.to==='splash'&&S.screen==='perfil'){Live.stop();RodAPI.signOut();fresh()}_goOut(d)};
 if(RodAPI.session()){(async()=>{try{const p=await RodAPI.profile();if(!p||S.screen!=='splash')return;
   newAccount();S.xp=p.xp||0;S.user={nombre:p.nombre,exp:p.exp};S.veh=Object.assign(S.veh,{cc:p.cc,marca:p.marca,placa:p.placa});
-  S.verStatus=p.ver_status;S.verified=p.ver_status==='ok';go('home')}catch(e){}})()}
+  S.verStatus=p.ver_status;S.verified=p.ver_status==='ok';loadResumen();go('home')}catch(e){}})()}
+/* ---------- tu perfil refleja tus rodadas: XP, calificación e historial viven en la base ---------- */
+S.done=S.done||{};S.hist=S.hist||[];
+async function loadResumen(){try{const j=await rest('/rpc/mi_resumen','POST',{});if(!j||typeof j!=='object')return;
+  S.xp=j.xp||0;S.rodadas=j.rodadas||0;S.rating=j.rating!=null?+j.rating:null;S.hist=j.hist||[];S.badges=[...new Set(S.hist.map(h=>h.badge).filter(Boolean))];
+  if(S.screen==='perfil'&&$('#layer').hidden)render()}catch(e){}}
+window.loadResumen=loadResumen;
+const _aw=awardRide;awardRide=function(){const had=S.award;_aw();const r=S.sel;
+  if(!had&&S.award&&r&&!r.sim){S.done[r.id]=true;rest('/rpc/registrar_rodada','POST',{p_ride:r.id,p_nombre:r.name,p_km:r.km||0,p_xp:S.award.xp,p_badge:S.award.b?S.award.b.k:null}).catch(()=>{})}};
+const _sr2=ACT.sendRate;ACT.sendRate=()=>{const r=S.sel,R=Object.assign({},S.rate);
+  if(r&&!r.sim&&r.pp)r.pp.filter(p=>p.user_id!==uid()).forEach(p=>{const c=R[p.nombre+'c'],q=R[p.nombre+'p'];if(c||q)rest('/rpc/calificar','POST',{p_ride:r.id,p_to:p.user_id,p_c:c||q,p_p:q||c}).catch(()=>{})});
+  _sr2()};
+const _skr=ACT.skipRate;ACT.skipRate=()=>{if(S.sel)S.done[S.sel.id]=true;_skr()};
+const _lg=ACT.login;ACT.login=async function(){const r=await _lg.apply(this,arguments);if(RodAPI.uid())loadResumen();return r};
+const _ap2=AFTER.perfil;AFTER.perfil=()=>{_ap2&&_ap2();loadResumen()};
+
+/* ---------- Inicio = tu rodada en curso: si ya estás en una, "Inicio" te lleva directo a su sala ---------- */
+const activeRide=()=>S.rides.find(r=>!r.sim&&r.part.includes('Tú')&&r.estado!=='terminada'&&!S.done[r.id]);
+const _goH=go;go=function(id){if(id==='home'){const r=activeRide();
+  if(r){S.sel=r;if(!S.lobby||S.lobby.rid!==r.id){initLobby(r.host==='Tú');S.lobby.rid=r.id}return _goH(S.run&&S.run.t0&&S.screen==='hud'?'hud':'lobby')}}
+  _goH(id)};
+const _rr=refreshRides;refreshRides=async function(){const ok=await _rr.apply(this,arguments);if(S.screen==='home'&&$('#layer').hidden&&activeRide())go('home');return ok};
+const _joinG=ACT.join;ACT.join=async function(){const a=activeRide();if(a&&S.sel&&a.id!==S.sel.id)return toast('Ya estás en "'+a.name+'". Sal de esa rodada para unirte a otra.');return _joinG.apply(this,arguments)};
 /* ---------- Comunidad real: las publicaciones y comentarios viven en Supabase y los ven todos ---------- */
 {const OFF=1e9,ago=t=>{const s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);return s<60?'Ahora':s<3600?'Hace '+Math.floor(s/60)+' min':s<86400?'Hace '+Math.floor(s/3600)+' h':'Hace '+Math.floor(s/86400)+' d'};
  let sig='',busyC=false;
@@ -255,6 +279,6 @@ if(RodAPI.session()){(async()=>{try{const p=await RodAPI.profile();if(!p||S.scre
  document.addEventListener('submit',async e=>{const f=e.target.closest('[data-cform]');if(!f||!RodAPI.live)return;
   const p=S.com.posts.find(x=>x.id==f.dataset.cform);if(!p||!p.real)return;const c=p.c[p.c.length-1];if(!c||c.n!=='Tú')return;
   try{await rest('/post_comments','POST',{post_id:p.id-OFF,nombre:S.user.nombre,texto:c.t.slice(0,400)},'return=minimal')}catch(err){toast('No se pudo comentar');p.c.pop();render()}});
- const _fr=fresh;fresh=function(){_fr();sig='';if(!EJ)S.com.posts=[]};
+ const _fr=fresh;fresh=function(){_fr();sig='';S.done={};S.hist=[];if(!EJ)S.com.posts=[]};
  if(!EJ)S.com.posts=[];}
 })();

@@ -27,6 +27,7 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
   async start(){if(this.sharing)return;this.err=null;
     if(!S.consent.ubic){return openLocPrompt()}
     this.sharing=true;
+    if(S.sel&&S.sel.demo){this.simUser();return}   /* rodada de prueba real: ubicación simulada, pero la ven los demás participantes */
     if(S.sel&&S.sel.sim){this.simUser();this.seedPeers();return}   /* demostración: tu recorrido es simulado, no se usa el GPS */
     if('wakeLock' in navigator){try{this.wake=await navigator.wakeLock.request('screen')}catch(e){}}
     if(navigator.geolocation){
@@ -58,7 +59,8 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
   /* Demostración: sales de un barrio de Bogotá y avanzas hacia el punto de encuentro en ~3 min desde que arranca la rodada. */
   simUser(){this.simMe=true;this.simT=0;
     const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],c=[4.65,-74.08],dy=c[0]-p[0],dx=(c[1]-p[1])*Math.cos(p[0]*Math.PI/180),L=Math.hypot(dx,dy)||1;
-    this.simO=[p[0]+dy/L*1000/111320,p[1]+dx/L*1000/(111320*Math.cos(p[0]*Math.PI/180))];   /* a 1 km del punto, hacia el centro de Bogotá */
+    this.simO=[p[0]+dy/L*1000/111320,p[1]+dx/L*1000/(111320*Math.cos(p[0]*Math.PI/180))];
+    if(S.sel&&S.sel.demo){const h=hash(String(RodAPI.uid()||'x'));this.simO[0]+=((h%7)-3)*.0006;this.simO[1]+=(((h>>3)%7)-3)*.0006}   /* cada persona sale de un punto distinto */   /* a 1 km del punto, hacia el centro de Bogotá */
     this.simStep()},
   simStep(){const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],o=this.simO,DUR=90000;
     if(!this.simT&&S.lobby&&S.lobby.started)this.simT=Date.now();
@@ -70,7 +72,7 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
     if(this.simMe&&this.me){this.me=[this.me[0]+(Math.random()-.4)*.0004,this.me[1]+(Math.random()-.4)*.0004,Date.now(),null,28+Math.random()*10]}}};
 
 /* ---------- mapa: MapLibre si hay estilo configurado; si no, esquema SVG ---------- */
-const MapKit={map:null,mk:{},
+const MapKit={map:null,mk:{},embed:false,pad(){return this.embed?{top:30,bottom:30,left:30,right:30}:{top:90,bottom:330,left:50,right:50}},
   bounds(){const pts=[];if(Live.me)pts.push(Live.me);Object.values(Live.peers).forEach(p=>pts.push(p.ll));const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];pts.push(p0);if(pts.length<2)pts.push(DEST_LL[r.zona]||DEST_LL.Norte);
     const la=pts.map(p=>p[0]),lo=pts.map(p=>p[1]),pad=.01;return{n:Math.max(...la)+pad,s:Math.min(...la)-pad,e:Math.max(...lo)+pad,w:Math.min(...lo)-pad}},
   svg(){const B=this.bounds(),W=360,H=300,r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0],d=DEST_LL[r.zona]||DEST_LL.Norte;
@@ -87,7 +89,7 @@ const MapKit={map:null,mk:{},
   async lib(){if(window.maplibregl)return;await new Promise((ok,ko)=>{const l=document.createElement('link');l.rel='stylesheet';l.href='assets/vendor/maplibre-gl.css';document.head.appendChild(l);const s=document.createElement('script');s.src='assets/vendor/maplibre-gl.js';s.onload=ok;s.onerror=ko;document.head.appendChild(s)})},
   async maplibre(el){const st=this.styleOf();if(!st)return false;
     try{await this.lib();
-      if(this.map){try{this.map.remove()}catch(e){}}this.mk={};this._sig=null;clearTimeout(this._bad);const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14},pitch:0,attributionControl:{compact:true}});
+      if(this.map){try{this.map.remove()}catch(e){}}this.mk={};this._sig=null;clearTimeout(this._bad);const B=this.bounds();this.map=new maplibregl.Map({container:el,style:st,bounds:[[B.w,B.s],[B.e,B.n]],fitBoundsOptions:{padding:this.pad(),maxZoom:14},pitch:0,attributionControl:{compact:true},cooperativeGestures:!!this.embed,locale:{'CooperativeGesturesHandler.MobileHelpText':'Usa dos dedos para mover el mapa','CooperativeGesturesHandler.WindowsHelpText':'Usa Ctrl + rueda para acercar','CooperativeGesturesHandler.MacHelpText':'Usa ⌘ + rueda para acercar'}});
       this.follow=true;this.map.on('dragstart',()=>{this.follow=false});
       this._ok=false;const mp=this.map;
       mp.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata'&&e.sourceId!=='ruta'&&e.sourceId!=='acc')this._ok=true});   /* llegó al menos un mosaico */
@@ -99,9 +101,9 @@ const MapKit={map:null,mk:{},
       const mk=(id,ll,html,cls,rot)=>{let k=this.mk[id];if(!k){const d=document.createElement('div');d.className=cls;d.innerHTML=html;k=this.mk[id]=new maplibregl.Marker({element:d,rotationAlignment:'map',pitchAlignment:'viewport'}).setLngLat([ll[1],ll[0]]).addTo(this.map)}else k.setLngLat([ll[1],ll[0]]);if(rot!=null)k.setRotation(rot);return k};
       if(Live.me){const hd=Live.me[3]!=null&&!isNaN(Live.me[3])?Live.me[3]:(this._hd||0);this._hd=hd;
         mk('me',Live.me,'<svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="rgba(0,122,255,.22)"/><path d="M22 6l11 28-11-6-11 6z" fill="#2FA8FF" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>','mkme',hd);
-        if(this.follow&&!this._busy&&!(S.lobby&&!S.lobby.started))this.map.easeTo({center:[Live.me[1],Live.me[0]],bearing:hd,pitch:55,zoom:16.3,duration:900,padding:{top:0,bottom:240,left:0,right:0}})}
+        if(this.follow&&!this._busy&&!(S.lobby&&!S.lobby.started))this.map.easeTo({center:[Live.me[1],Live.me[0]],bearing:hd,pitch:55,zoom:16.3,duration:900,padding:this.embed?{top:0,bottom:0,left:0,right:0}:{top:0,bottom:240,left:0,right:0}})}
       this.accCircle();RouteMap.attach(this.map,S.sel&&S.sel.rt);
-      if(S.lobby&&!S.lobby.started&&this.follow){const sig=Object.keys(Live.peers).length+(Live.me?'m':'');if(sig!==this._sig){this._sig=sig;const B=this.bounds();try{this.map.fitBounds([[B.w,B.s],[B.e,B.n]],{padding:{top:90,bottom:330,left:50,right:50},maxZoom:14,duration:700})}catch(e){}}}
+      if(S.lobby&&!S.lobby.started&&this.follow){const sig=Object.keys(Live.peers).length+(Live.me?'m':'');if(sig!==this._sig){this._sig=sig;const B=this.bounds();try{this.map.fitBounds([[B.w,B.s],[B.e,B.n]],{padding:this.pad(),maxZoom:14,duration:700})}catch(e){}}}
       Object.entries(Live.peers).forEach(([id,q])=>{const k=mk(id,q.ll,`<span>${esc(ini(q.n))}</span><em>${esc(first(q.n))}</em>`,'mkp');const a=Date.now()-q.t;k.getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1})}
     else el.innerHTML=this.svg();
     const sp=$('#spdv');if(sp)sp.textContent=Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):'—';
@@ -113,7 +115,7 @@ const MapKit={map:null,mk:{},
     try{if(!mp.isStyleLoaded())return;const s=mp.getSource('acc');if(s)s.setData(data);else{mp.addSource('acc',{type:'geojson',data});
       mp.addLayer({id:'acc-f',type:'fill',source:'acc',paint:{'fill-color':'#2F80ED','fill-opacity':.13}});mp.addLayer({id:'acc-l',type:'line',source:'acc',paint:{'line-color':'#2F80ED','line-width':1.2,'line-opacity':.6}})}}catch(e){}},
   fallback(){if(!this.map||this._ok)return;try{this.map.remove()}catch(e){}this.map=null;this.mk={};const el=$('#mapbox');if(el){const keep=el.querySelector('.empty');el.innerHTML=this.svg()}},
-  leave(){clearTimeout(this._bad);this._bad=null;if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0;this.follow=true}}};
+  leave(){this.embed=false;clearTimeout(this._bad);this._bad=null;if(this.map){try{this.map.remove()}catch(e){}this.map=null;this.mk={};this._fit=0;this.follow=true}}};
 
 function peerRows(){const me=Live.me,now=Date.now();
   return Object.values(Live.peers).map(q=>({n:q.n,d:me?hav(me,q.ll):null,a:now-q.t})).sort((a,b)=>(a.d==null)-(b.d==null)||a.d-b.d)}
@@ -123,7 +125,7 @@ function peersHTML(){const rows=peerRows();if(!rows.length)return `<p class="sma
 function accHTML(){if(!Live.sharing)return '';
   if(Live.err&&!Live.me)return `<div class="banner info">${I('warn',20)}<span>GPS ${Live.err}.${Live.err==='denegado'?' Activa el permiso de ubicación de RodApp en los ajustes del celular.':' Buscando de nuevo; sal a cielo abierto si estás bajo techo.'}</span></div>`;
   if(!Live.me)return '<p class="small" style="margin:0">Buscando tu ubicación…</p>';
-  if(Live.simMe)return `<div class="banner info">${I('warn',20)}<span>${S.sel&&S.sel.sim?'Demostración: tu recorrido es simulado y avanza solo cuando arranca la rodada.':'Mostramos una posición de ejemplo.'}</span></div>`;
+  if(Live.simMe)return `<div class="banner info">${I('warn',20)}<span>${S.sel&&(S.sel.sim||S.sel.demo)?'Demostración: tu recorrido es simulado y avanza solo cuando arranca la rodada.'+(S.sel.demo?' Los demás participantes sí te ven.':''):'Mostramos una posición de ejemplo.'}</span></div>`;
   const a=Math.round(Live.me[5]||0);
   return a>150?`<div class="banner info">${I('warn',20)}<span>Ubicación aproximada (±${a} m): el círculo azul es el área real posible. Un computador no tiene GPS; en el celular será precisa.</span></div>`:`<p class="small" style="margin:0;color:#8FF0C0">Tu ubicación en vivo${a?' · ±'+a+' m':''}</p>`}
 function lagHTML(){if(S.lobby&&!S.lobby.started)return '';const out=peerRows().filter(q=>q.a>LOST_MS||(q.d!=null&&q.d>LAG_M));if(!out.length)return '';
@@ -244,9 +246,20 @@ function openLocPrompt(){openLayer(`<div class="scrim" data-act="closeLayer"></d
 Object.assign(ACT,{
   mapa:()=>go('mapa'),
   mapRec:()=>{MapKit.follow=true;MapKit.draw()},
+  lsec:d=>{const L=S.lobby;if(!L)return;L.open=L.open||{};const k=d.k,on=L.open[k]===false;L.open[k]=on;const b=$('#sec_'+k);if(b)b.hidden=!on;const h=document.querySelector('[data-k="'+k+'"].lsech');if(h)h.setAttribute('aria-expanded',on)},
+  lmap:()=>{const L=S.lobby;if(!L)return;L.mapOn=true;if(!Live.sharing&&!S.consent.ubic){return openLocPrompt()}if(!Live.sharing)return Live.start().then(render);render()},
+  lmapOff:()=>{const L=S.lobby;if(L)L.mapOn=false;MapKit.leave();render()},
   locAllow:()=>{S.consent.ubic=true;closeLayer();ACT.locStart()},
   locStart:async()=>{await Live.start();render()},
   locStop:()=>{Live.stop();render()}
 });
 /* El permiso de ubicación se corta al terminar la rodada o cerrar sesión. */
-const _goMap=go;go=function(id){if(S.screen==='mapa'&&id!=='mapa')MapKit.leave();if(S.screen==='hud'&&id!=='hud')HudMap.stop();if(['resumen','splash','login'].includes(id))Live.stop();_goMap(id)};
+const _goMap=go;go=function(id){if((S.screen==='mapa'&&id!=='mapa')||(S.screen==='lobby'&&id!=='lobby'))MapKit.leave();if(S.screen==='hud'&&id!=='hud')HudMap.stop();if(['resumen','splash','login'].includes(id))Live.stop();_goMap(id)};
+
+/* Mapa integrado en la sala de espera: se carga al pulsar "Ver mapa del grupo", después de compartir la ubicación. */
+window.lobbyMapInit=async function(){const L=S.lobby;if(!L||S.screen!=='lobby'||!L.mapOn)return;
+  if(!Live.sharing){return}   /* sin compartir no hay mapa: vuelve al botón */
+  MapKit.embed=true;Live.tick();const el=$('#mapbox');if(!el)return;
+  const ok=await MapKit.maplibre(el);if(!ok){el.innerHTML=MapKit.svg()}MapKit.draw();
+  every(()=>{if(S.screen!=='lobby'||!S.lobby||!S.lobby.mapOn)return;Live.tick();MapKit.draw()},1000)};
+const _alm=AFTER.lobby;AFTER.lobby=function(){const r=_alm&&_alm.apply(this,arguments);lobbyMapInit();return r};

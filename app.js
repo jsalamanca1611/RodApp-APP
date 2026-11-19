@@ -58,6 +58,7 @@ const IC={
  img:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.7"/><path d="M21 16l-5-5-8 8"/>',
  star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/>',
  send:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',
+ menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
  bt:'<path d="M7 7l10 10-5 5V2l5 5L7 17"/>',
  people:'<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 3-5 6-5s6 1.5 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 4.5 1.5 4.5 4"/>',
  route:'<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/>',
@@ -206,7 +207,7 @@ SCR.done=()=>`<div class="scr light"><div class="body" style="justify-content:ce
 const tabbar=cur=>`<nav class="tabs" aria-label="Principal">${[['home','Inicio','home'],['comunidad','Comunidad','people'],['clubes','Clubes','trophy'],['perfil','Perfil','user']].map(([k,l,i])=>`<button data-act="go" data-to="${k}" ${cur===k?'aria-current="true"':''}>${I(i,24)}${l}</button>`).join('')}</nav>`;
 const lvl=n=>`<span class="lvl"><span class="b">${[1,2,3].map(i=>`<i class="${i<=NIV[n]?'f':''}"></i>`).join('')}</span>${n}</span>`;
 function rideCard(r){const c=cuposOf(r);const cl=c<=0?'full':c<=2?'low':'';
- return `<button class="ride" data-act="open" data-id="${r.id}"><div class="rtop"><h3>${esc(r.name)}</h3>${lvl(r.nivel)}</div>${r.sim&&RodAPI.live?'<div class="small" style="margin:-2px 0 6px;color:var(--mut)">Demostración · los compañeros son simulados</div>':''}
+ return `<button class="ride" data-act="open" data-id="${r.id}"><div class="rtop"><h3>${esc(r.name)}</h3>${lvl(r.nivel)}</div>${r.demo?'<div class="small" style="margin:-2px 0 6px;color:var(--mut)">Prueba real · chat y ubicación compartidos; el recorrido es simulado</div>':r.sim&&RodAPI.live?'<div class="small" style="margin:-2px 0 6px;color:var(--mut)">Demostración · los compañeros son simulados</div>':''}
  <div class="host">${r.ver?vb():''}<span>${esc(r.club)} · ${esc(r.host==='Tú'?'Tú':r.host)}</span></div>
  <div class="meta"><span>${I('clock',16)}${r.fecha}, ${r.hora}</span><span>${I('pin',16)}${r.zona}</span><span>${I('engine',16)}${r.cc} cc</span>${r.lugar&&!S.badges.includes(r.lugar)?`<span style="color:var(--neon)">${I('star',16)}Insignia ${BADGES.find(b=>b.k===r.lugar).n} · +${XP_INSIGNIA} XP</span>`:''}</div>
  <div class="rfoot">${avs(r.part)}<span class="cupos ${cl}">${c<=0?'Rodada llena':c===1?'Queda 1 cupo':c+' cupos'}</span></div></button>`}
@@ -254,6 +255,7 @@ SCR.perfil=()=>{const u=S.user||{nombre:'Camilo Rojas',exp:'Intermedio'},xi=xpIn
    <div class="meter" role="progressbar" aria-label="Experiencia" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${xi.pct}"><i style="width:${xi.pct}%"></i></div>
    <span class="small">Cada rodada suma ${XP_RODADA} XP. Cada insignia suma ${XP_INSIGNIA} XP.</span></div>
   <div><h2 class="t" style="margin-bottom:10px">Mis rodadas</h2>${m.length?`<div class="cards" style="gap:12px">${m.map(rideCard).join('')}</div>`:`<div class="empty" style="padding:18px 10px"><p class="lead">Aún no tienes rodadas por salir.</p><button class="btn sm" data-act="go" data-to="home">Ver rodadas</button></div>`}</div>
+  <div><h2 class="t" style="margin-bottom:10px">Historial de rodadas</h2>${(S.hist&&S.hist.length)?`<div class="cards" style="gap:8px">${S.hist.map(h=>`<div class="fact" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b style="font-size:15px">${esc(h.nombre)}</b><span>${new Date(h.created_at).toLocaleDateString('es-CO',{day:'numeric',month:'short'})} · ${h.km||0} km</span></div><b style="color:var(--neon)">+${h.xp} XP</b></div>`).join('')}</div>`:`<p class="small">Aún no has terminado ninguna rodada. Cuando termines una, aparece aquí con su XP.</p>`}</div>
   <div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><h2 class="t">Insignias</h2><span class="small">${S.badges.length} de ${BADGES.length}</span></div>
    <div class="bgrid">${BADGES.map(b=>{const o=S.badges.includes(b.k);return `<button class="bdg ${o?'':'lock'}" data-act="badge" data-k="${b.k}" aria-label="Insignia ${b.n}, ${o?'ganada':'bloqueada, mínimo '+b.km+' km'}">${badgeSVG(b,o,64)}<b>${b.n}</b><span>${o?'Ganada':'Mín. '+b.km+' km'}</span></button>`}).join('')}</div></div>
   <button class="btn ghost" data-act="go" data-to="splash">Cerrar sesión</button></div>${tabbar('perfil')}</div>`};
@@ -296,22 +298,25 @@ function initLobby(host){
   S.lobby={host,ready:false,started:false,ppl,msgs:host?[]:[{n:r.host,t:'Buenas, parche. Nos vemos 15 minutos antes y tanqueamos ahí mismo.'}]};
 }
 const readyN=()=>S.lobby.ppl.filter(p=>p.st==='ready').length;
-SCR.lobby=()=>{const L=S.lobby,r=S.sel;const rn=readyN();const total=L.ppl.length;
+SCR.lobby=()=>{const L=S.lobby,r=S.sel;const rn=readyN();const total=L.ppl.length;L.open=L.open||{ppl:true,chat:true};
+ const sec=(k,t,extra,body)=>`<section class="lsec"><button class="lsech" data-act="lsec" data-k="${k}" aria-expanded="${L.open[k]!==false}" aria-controls="sec_${k}">${I('menu',22,2.2)}<b>${t}</b><span class="small" id="lx_${k}">${extra}</span></button><div id="sec_${k}" ${L.open[k]===false?'hidden':''}>${body}</div></section>`;
+ const mapBox=(L.mapOn&&typeof Live!=='undefined'&&Live.sharing)?`<div class="lmapw"><div id="mapbox" class="mapfull"></div></div><div id="acc" style="margin-top:8px">${typeof accHTML==='function'?accHTML():''}</div><button class="btn sm ghost" data-act="lmapOff">Ocultar mapa</button>`
+  :`<div class="fact" style="display:flex;gap:12px;align-items:center">${I('pin',24)}<div style="flex:1"><b style="font-size:15px">Mapa del grupo</b><span>Primero compartes tu ubicación; luego ves a todos aquí.</span></div></div><button class="btn sm ghost" data-act="lmap">${I('pin',18)}Ver mapa del grupo</button>`;
  return `<div class="scr light">${hdr('Sala de espera','detalle','<button class="btn link sm" style="min-height:44px" data-act="leave">'+(L.host&&!r.oficial?'Cancelar':'Salir')+'</button>')}
  <div class="body" id="lbody"><div><h1 class="t" style="font-size:26px">${esc(r.name)}</h1><p class="lead" style="margin-top:4px">${r.fecha}, ${r.hora} · ${esc(r.punto)}</p><p class="small" id="lsync" style="margin-top:4px">${window.syncTxt?window.syncTxt():''}</p></div>
-  <button class="btn sm ghost" data-act="mapa">${I('pin',18)}Ver mapa del grupo</button>
   ${L.started?`<div class="banner ok">${I('flag',20)}<span><b>${esc(first(r.host))} inició la rodada.</b> Ve al punto de encuentro.</span></div>`:''}
+  <div id="lmapsec" style="display:flex;flex-direction:column;gap:8px">${mapBox}</div>
   <div><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b id="lcount">${rn} de ${total} listos</b><span class="small">${total} de ${r.cupo} cupos</span></div><div class="meter"><i id="lmeter" style="width:${total?rn/total*100:0}%"></i></div></div>
-  <div id="lppl">${pplHTML()}</div>
-  <div><h2 class="t" style="margin-bottom:10px">Chat del grupo</h2><div class="chat" id="lchat">${chatHTML()}</div></div>
+  ${sec('ppl','Participantes',total,`<div id="lppl">${pplHTML()}</div>`)}
+  ${sec('chat','Chat del grupo','',`<div class="chat" id="lchat">${chatHTML()}</div><form class="chatin" id="cform"><input id="cin" placeholder="Escribe al grupo" autocomplete="off" aria-label="Mensaje"><button type="submit" aria-label="Enviar">${I('send',22)}</button></form>`)}
  </div>
- <div class="foot"><form class="chatin" id="cform"><input id="cin" placeholder="Escribe al grupo" autocomplete="off" aria-label="Mensaje"><button type="submit" aria-label="Enviar">${I('send',22)}</button></form>
+ <div class="foot">
  ${L.started?`<button class="btn" data-act="toEnroute">Ir al punto de encuentro</button>`:L.host?`<button class="btn" data-act="hostStart" id="hbtn" ${rn>=1?'':'disabled'}>Iniciar rodada</button>`:`<button class="btn ${L.ready?'':''}" data-act="ready" id="rbtn">${L.ready?'Listo para salir · toca para cancelar':'Estoy listo para salir'}</button>`}
 </div></div>`};
 const pplHTML=()=>S.lobby.ppl.map(p=>`<button class="prow" data-act="peek" data-n="${esc(p.n)}">${av(p.n)}<div class="n">${esc(p.n)} ${lchip(p.n)}${p.n===S.sel.host?'<small>'+(S.sel.oficial?'Líder':'Anfitrión')+'</small>':''}</div><span class="ptag ${p.st==='ready'?'':'w'}">${p.st==='ready'?'Listo':p.st==='conf'?'Confirmó':'Esperando'}</span></button>`).join('');
 const chatHTML=()=>S.lobby.msgs.map(m=>m.me?`<div class="msg-b me">${esc(m.t)}</div>`:`<div class="msg-b"><small>${esc(m.n)} ${lchip(m.n)}</small>${esc(m.t)}</div>`).join('')||'<p class="small" style="margin:0">Aún no hay mensajes. Saluda al parche.</p>';
-function refreshLobby(){const L=S.lobby;if(S.screen!=='lobby')return;const p=$('#lppl');if(!p)return;p.innerHTML=pplHTML();const rn=readyN();$('#lcount').textContent=rn+' de '+L.ppl.length+' listos';$('#lmeter').style.width=(L.ppl.length?rn/L.ppl.length*100:0)+'%';const h=$('#hbtn');if(h)h.disabled=rn<1}
-function refreshChat(){const c=$('#lchat');if(c){c.innerHTML=chatHTML();const b=$('#lbody');b.scrollTop=b.scrollHeight}}
+function refreshLobby(){const L=S.lobby;if(S.screen!=='lobby')return;const p=$('#lppl');if(!p)return;p.innerHTML=pplHTML();const rn=readyN();$('#lcount').textContent=rn+' de '+L.ppl.length+' listos';const lx=$('#lx_ppl');if(lx)lx.textContent=L.ppl.length;$('#lmeter').style.width=(L.ppl.length?rn/L.ppl.length*100:0)+'%';const h=$('#hbtn');if(h)h.disabled=rn<1}
+function refreshChat(){const c=$('#lchat');if(c){c.innerHTML=chatHTML();c.scrollTop=c.scrollHeight}}
 AFTER.lobby=()=>{const L=S.lobby,r=S.sel;if(r.sim)return SimBots.lobbyAfter();
  $('#cform').addEventListener('submit',e=>{e.preventDefault();const i=$('#cin');const t=i.value.trim();if(!t)return;L.msgs.push({me:1,t});i.value='';refreshChat();
    later(()=>{const o=L.ppl.filter(p=>p.n!=='Tú');if(!o.length)return;L.msgs.push({n:o[hash(t)%o.length].n,t:['Listo, ahí nos vemos.','Perfecto, yo ya estoy saliendo.','Me avisan si cambia algo.','Dale, parche.'][hash(t)%4]});refreshChat()},1500)});
