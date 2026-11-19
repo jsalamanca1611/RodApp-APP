@@ -329,7 +329,7 @@ AFTER.lobby=()=>{const L=S.lobby,r=S.sel;if(r.sim)return SimBots.lobbyAfter();
 /* ----- camino al punto ----- */
 SCR.enroute=()=>{const r=S.sel;
  return `<div class="scr light"><div class="top" style="min-height:56px"><button class="ib" data-act="go" data-to="lobby" aria-label="Volver">${I('back',24)}</button><h2 class="t" style="font-size:20px">Dirígete al punto de encuentro</h2></div>
- <div class="map" style="flex:1;min-height:0;margin:6px 14px 0;border-radius:22px">${mapSVG([[100,138],[124,120],[150,112],[176,90]],false,{you:1})}</div>
+ <div class="map" id="enmap" style="flex:1;min-height:0;margin:6px 14px 0;border-radius:22px;position:relative;overflow:hidden">${mapSVG([[100,138],[124,120],[150,112],[176,90]],false,{you:1})}</div>
  <div class="body" style="flex:none;overflow:visible;padding-top:14px"><div class="fact" style="display:flex;justify-content:space-between;align-items:center"><div><b style="font:400 28px var(--display)" id="edist">1,2 km</b><span id="eeta">4 min a tu destino</span></div><div style="text-align:right;max-width:160px"><b style="font-size:15px">${esc(r.punto.split(' Cra')[0])}</b><span>${r.hora}</span></div></div></div>
  <div class="foot"><button class="btn" data-act="micAsk" id="ebtn">Ya estoy en el punto</button></div></div>`};
 AFTER.enroute=()=>{let d=1.2;every(()=>{d=Math.max(0,d-.15);const el=$('#edist');if(!el)return;el.textContent=d>0?d.toFixed(1).replace('.',',')+' km':'Llegaste';$('#eeta').textContent=d>0?Math.max(1,Math.round(d*3.4))+' min a tu destino':'Estás en el punto de encuentro'},1000)};

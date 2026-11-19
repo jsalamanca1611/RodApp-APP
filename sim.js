@@ -17,7 +17,7 @@ const SimBots=(()=>{
   const LLEGUE=['Ya llegué, los espero en el punto.','Aquí estoy. Hay sombra en la entrada.','Llegué. Voy por un tinto mientras llegan.','Presente. Ya estoy con la moto parqueada.'];
   const RESP=['Listo, ahí nos vemos.','Perfecto, yo ya estoy saliendo.','Me avisan si cambia algo.','Dale, parche.','Copiado.','Va, quedo atento.','Sin problema, aquí estamos.','De una, nos vemos en un rato.'];
   const pick=(a,h)=>a[Math.abs(h)%a.length];
-  const meet=r=>SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];
+  const meet=r=>spotOf(r);
   const state={};
   function build(r){
     const t0=Date.now(),p0=meet(r),names=r.part.filter(n=>n!=='Tú').slice(0,6),used=new Set();

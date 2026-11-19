@@ -66,7 +66,7 @@ class H(BaseHTTPRequestHandler):
             if st!='error': DB['profiles'][me]['ver_status']='review' if (st=='flag' or d.get('alt')) else 'ok'
             return s.out(200,st)
         if p=='/rest/v1/rpc/sembrar_rodadas':
-            if not any(x.get('oficial') for x in DB['rides']):
+            if not any(x.get('oficial') and x.get('nombre')!='RodApp prueba' for x in DB['rides']):
                 for nm,pt in(('La Calera – Guasca','Peaje Patios · Vía a La Calera'),('Chía – Cajicá','Portal del Norte · Autopista Norte')):
                     NID['rides']+=1; DB['rides'].append({'id':NID['rides'],'nombre':nm,'zona':'Norte','cc':'<200','nivel':'Principiante','fecha':'Sáb 22 nov','hora':'7:00 AM','cupo':6,'punto':pt,'km':40,'rt':0,'host':None,'host_nombre':'Rodada oficial RodApp','oficial':True,'estado':'abierta','created_at':now_iso()})
                 return s.out(200,2)

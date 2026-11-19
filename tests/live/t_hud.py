@@ -18,7 +18,7 @@ try:
     for pg,n in((A,'A'),(B,'B')): pg.on('pageerror',lambda e,n=n:print('PAGEERR',n,e)); pg.add_init_script(ov+"window.__said=[];window.speechSynthesis&&(speechSynthesis.speak=u=>window.__said.push(u.text));")
     boot(A,'a@x.co','Ana Host','1010101010'); boot(B,'b@x.co','Beto Rider','2020202020')
     A.evaluate("Object.assign(S.cr,{nombre:'Ruta HUD',ruta:0,cc:'200–500',zona:'Calera',nivel:'Intermedio',fecha:FECHAS[1],hora:HORAS[3],cupo:4,punto:SPOTS[1]})"); A.evaluate("ACT.publish()"); A.wait_for_timeout(800)
-    B.evaluate("go('home')"); B.wait_for_timeout(1200); B.evaluate("ACT.open({id:S.rides.find(r=>!r.sim).id})"); B.evaluate("ACT.join()"); B.wait_for_timeout(1200)
+    B.evaluate("go('home')"); B.wait_for_timeout(1200); B.evaluate("ACT.open({id:S.rides.find(r=>!r.sim&&!r.demo).id})"); B.evaluate("ACT.join()"); B.wait_for_timeout(1200)
     A.wait_for_timeout(2500); A.evaluate("ACT.hostStart()"); B.wait_for_timeout(2600)
     for pg in(A,B): pg.evaluate("S.micOk=true;startRun();go('hud')")
     A.wait_for_timeout(4500); B.wait_for_timeout(500)

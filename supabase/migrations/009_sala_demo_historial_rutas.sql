@@ -37,12 +37,14 @@ begin
     return r.id;
   end if;
   insert into public.rides (nombre, zona, cc, nivel, sale_at, punto, cupo, host, oficial, fecha, hora, km, rt, host_nombre)
-  values ('RodApp prueba', 'Norte', '<200', 'Principiante', now() + interval '10 years', 'Portal del Norte · Autopista Norte', 10, null, true, 'Hoy', 'Ahora', 6, 0, 'Demostración')
+  values ('RodApp prueba', 'Norte', '<200', 'Principiante', now() + interval '10 years', 'Peaje Patios · Vía a La Calera', 10, null, true, 'Hoy', 'Ahora', 6, 0, 'Demostración')
   returning id into nid;
   return nid;
 end $$;
 revoke all on function public.asegurar_demo() from public, anon;
 grant execute on function public.asegurar_demo() to authenticated;
+-- El punto de encuentro de la prueba es el inicio de su ruta
+update public.rides set punto = 'Peaje Patios · Vía a La Calera' where oficial and nombre = 'RodApp prueba';
 select public.asegurar_demo();
 
 -- ============ historial, XP y calificación ============

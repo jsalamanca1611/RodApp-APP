@@ -21,7 +21,7 @@ try:
     boot(A,'a@x.co','Ana Host','1010101010'); boot(B,'b@x.co','Beto Rider','2020202020')
     A.evaluate("Object.assign(S.cr,{nombre:'Recip',ruta:0,cc:'200–500',zona:'Calera',nivel:'Intermedio',fecha:FECHAS[1],hora:HORAS[3],cupo:4,punto:SPOTS[1]});ACT.publish()"); A.wait_for_timeout(900)
     B.evaluate("go('home')"); B.wait_for_timeout(1200)
-    B.evaluate("ACT.open({id:S.rides.find(r=>!r.sim).id});ACT.join()"); B.wait_for_timeout(1500)
+    B.evaluate("ACT.open({id:S.rides.find(r=>!r.sim&&!r.demo).id});ACT.join()"); B.wait_for_timeout(1500)
     chk('B ve a A en la lista de personas',B.evaluate("S.lobby.ppl.length")==2 and 'Rodada n.º' in B.evaluate("document.querySelector('#lsync').innerText"))
     A.evaluate("S.consent.ubic=true;go('mapa');ACT.locStart()"); A.wait_for_timeout(2500)
     chk('A comparte y ve el mapa',A.evaluate("Live.canSee()&&!!document.querySelector('#mapbox')"))

@@ -480,3 +480,9 @@ input[type=range]{accent-color:var(--green);min-height:32px}
 .lsech b{flex:1;font:400 20px var(--display)}
 .lsech[aria-expanded="false"] svg{opacity:.55}
 #lchat{max-height:240px;overflow-y:auto;margin-bottom:8px}
+
+.hudmap.nav #hgrp{inset:auto!important;top:62px!important;left:0!important;right:0!important;padding:0 10px!important;flex-direction:row!important;overflow-x:auto!important;overflow-y:hidden!important;gap:8px!important;z-index:3;height:auto!important;pointer-events:auto}
+.hudmap #hchip{z-index:4}
+.gchip{display:inline-flex;align-items:center;gap:6px;flex:none;padding:7px 12px;border-radius:999px;background:rgba(4,19,11,.82);color:#fff;font-size:13px;border:1px solid rgba(255,255,255,.14);white-space:nowrap}
+.gchip i{width:9px;height:9px;border-radius:50%}
+.gchip b{font-weight:700}

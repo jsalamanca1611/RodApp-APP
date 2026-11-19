@@ -9,13 +9,15 @@
    Coordenadas de ejemplo APROXIMADAS (±1 km): validar con trazados reales antes de usarlas. */
 
 const SPOT_LL=[[4.7536,-74.0458],[4.7447,-73.9967],[4.7116,-74.1146],[4.5936,-74.1883],[4.5733,-74.1306],[4.6296,-74.1448],[4.6762,-74.0505]];
+/* Punto de encuentro de una rodada: el inicio de la ruta dibujada, el inicio de la ruta de la prueba, o uno de los puntos de la lista. */
+const spotOf=r=>{r=r||S.sel;if(r&&r.cr)return[r.cr[0][1],r.cr[0][0]];if(r&&r.demo)return RouteMap.wp(r.rt)[0];return SPOT_LL[SPOTS.indexOf(r&&r.punto)]||SPOT_LL[0]};
 const DEST_LL={Norte:[5.0221,-74.0053],Calera:[4.7207,-73.9686],Patios:[4.7207,-73.9686],Sur:[4.4930,-74.2600],Occidente:[4.9167,-74.0969]};
 const hav=(a,b)=>{const R=6371000,r=x=>x*Math.PI/180,dl=r(b[0]-a[0]),dn=r(b[1]-a[1]),h=Math.sin(dl/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
 const fmtD=m=>m<950?Math.round(m/10)*10+' m':(m/1000).toFixed(1).replace('.',',')+' km';
 const ago=t=>{const s=Math.max(0,Math.round((Date.now()-t)/1000));return s<5?'ahora':s<60?'hace '+s+' s':'hace '+Math.round(s/60)+' min'};
 /* Enlaces para llegar al punto de encuentro con la app de navegación del usuario. Las coordenadas de SPOT_LL son aproximadas:
    en producción el organizador fija el punto en un selector de mapa y se guarda lat/lng en la rodada. */
-const navLink=k=>{const p=SPOT_LL[SPOTS.indexOf(S.sel.punto)]||SPOT_LL[0],ll=p[0]+','+p[1];
+const navLink=k=>{const p=spotOf(S.sel),ll=p[0]+','+p[1];
   return k==='waze'?`https://waze.com/ul?ll=${ll}&navigate=yes&utm_source=rodapp`:`https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving`};
 const STALE_MS=20000,LOST_MS=60000,LAG_M=1500;
 
@@ -44,8 +46,8 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
   stop(){this.sharing=false;if(this.watch!=null){navigator.geolocation.clearWatch(this.watch);this.watch=null}
     if(this.wake){try{this.wake.release()}catch(e){}this.wake=null}
     if(this.ch){try{this.ch.unsubscribe()}catch(e){}this.ch=null}
-    this.me=null;this.simMe=false;this.peers={};this.sim=null},
-  useSim(){if(!this.me){const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0];this.me=[p[0]+.0009,p[1]-.0007,Date.now()];this.simMe=true}},
+    this.me=null;this.simMe=false;this.peers={};this.sim=null;this.simR=null;this.simT2=0},
+  useSim(){if(!this.me){const p=spotOf(S.sel);this.me=[p[0]+.0009,p[1]-.0007,Date.now()];this.simMe=true}},
   push(c){if(!this.ch)return;const now=Date.now();if(now-(this._t||0)<2000)return;this._t=now;
     this.ch.send({type:'broadcast',event:'pos',payload:{uid:RodAPI.session().user.id,name:S.user.nombre,lat:c.latitude,lng:c.longitude,spd:c.speed,hdg:c.heading,t:now}})},
   /* Real: canal privado por rodada. Requiere las políticas de realtime.messages de supabase/schema.sql. */
@@ -57,12 +59,15 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
   /* Compañeros simulados (rodadas de ejemplo): salen de distintos barrios y avanzan despacio hacia el punto de encuentro. Ver sim.js. */
   seedPeers(){SimBots.init(S.sel);this.peers=SimBots.peers(S.sel)},
   /* Demostración: sales de un barrio de Bogotá y avanzas hacia el punto de encuentro en ~3 min desde que arranca la rodada. */
-  simUser(){this.simMe=true;this.simT=0;
-    const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],c=[4.65,-74.08],dy=c[0]-p[0],dx=(c[1]-p[1])*Math.cos(p[0]*Math.PI/180),L=Math.hypot(dx,dy)||1;
+  simUser(){this.simMe=true;this.simT=0;this.simT2=0;this.simR=null;if(S.sel&&S.sel.demo)RouteMap.coords(S.sel.rt).then(c=>{this.simR=routeIdx(c)});
+    const p=spotOf(S.sel),c=[4.65,-74.08],dy=c[0]-p[0],dx=(c[1]-p[1])*Math.cos(p[0]*Math.PI/180),L=Math.hypot(dx,dy)||1;
     this.simO=[p[0]+dy/L*1000/111320,p[1]+dx/L*1000/(111320*Math.cos(p[0]*Math.PI/180))];
     if(S.sel&&S.sel.demo){const h=hash(String(RodAPI.uid()||'x'));this.simO[0]+=((h%7)-3)*.0006;this.simO[1]+=(((h>>3)%7)-3)*.0006}   /* cada persona sale de un punto distinto */   /* a 1 km del punto, hacia el centro de Bogotá */
     this.simStep()},
-  simStep(){const p=SPOT_LL[SPOTS.indexOf(S.sel&&S.sel.punto)]||SPOT_LL[0],o=this.simO,DUR=90000;
+  simStep(){const r=S.sel,p=spotOf(r),o=this.simO,DUR=90000;
+    if(r&&r.demo&&S.screen==='hud'&&this.simR){   /* fase 2 (solo la prueba): tu punto recorre la ruta real solo, a ~65 km/h */
+      if(!this.simT2)this.simT2=Date.now();const R=this.simR,L=R.cum[R.cum.length-1],sp=18,d=Math.min(L,(Date.now()-this.simT2)/1000*sp),q=R.at(d);
+      this.me=[q[1],q[0],Date.now(),q[2],d<L?Math.round(sp*3.6):0,8];return}
     if(!this.simT&&S.lobby&&S.lobby.started)this.simT=Date.now();
     const f=this.simT?Math.min(1,(Date.now()-this.simT)/DUR):0,la=o[0]+(p[0]-o[0])*f,ln=o[1]+(p[1]-o[1])*f;
     const dy=(p[0]-o[0]),dx=(p[1]-o[1])*Math.cos(o[0]*Math.PI/180),hd=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
@@ -73,9 +78,9 @@ const Live={sharing:false,me:null,peers:{},err:null,watch:null,wake:null,ch:null
 
 /* ---------- mapa: MapLibre si hay estilo configurado; si no, esquema SVG ---------- */
 const MapKit={map:null,mk:{},embed:false,pad(){return this.embed?{top:30,bottom:30,left:30,right:30}:{top:90,bottom:330,left:50,right:50}},
-  bounds(){const pts=[];if(Live.me)pts.push(Live.me);Object.values(Live.peers).forEach(p=>pts.push(p.ll));const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];pts.push(p0);if(pts.length<2)pts.push(DEST_LL[r.zona]||DEST_LL.Norte);
+  bounds(){const pts=[];if(Live.me)pts.push(Live.me);Object.values(Live.peers).forEach(p=>pts.push(p.ll));const r=S.sel,p0=spotOf(r);pts.push(p0);if(pts.length<2)pts.push(DEST_LL[r.zona]||DEST_LL.Norte);
     const la=pts.map(p=>p[0]),lo=pts.map(p=>p[1]),pad=.01;return{n:Math.max(...la)+pad,s:Math.min(...la)-pad,e:Math.max(...lo)+pad,w:Math.min(...lo)-pad}},
-  svg(){const B=this.bounds(),W=360,H=300,r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0],d=DEST_LL[r.zona]||DEST_LL.Norte;
+  svg(){const B=this.bounds(),W=360,H=300,r=S.sel,p0=spotOf(r),d=DEST_LL[r.zona]||DEST_LL.Norte;
     const k=Math.cos(((B.n+B.s)/2)*Math.PI/180),sx=W/((B.e-B.w)*k),sy=H/(B.n-B.s),s=Math.min(sx,sy)*.9,ox=(W-(B.e-B.w)*k*s)/2,oy=(H-(B.n-B.s)*s)/2;
     const X=p=>ox+(p[1]-B.w)*k*s,Y=p=>oy+(B.n-p[0])*s,now=Date.now();
     const mid=[(p0[0]+d[0])/2+.01,(p0[1]+d[1])/2-.01];
@@ -94,7 +99,7 @@ const MapKit={map:null,mk:{},embed:false,pad(){return this.embed?{top:30,bottom:
       this._ok=false;const mp=this.map;
       mp.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata'&&e.sourceId!=='ruta'&&e.sourceId!=='acc')this._ok=true});   /* llegó al menos un mosaico */
       this._bad=setTimeout(()=>{if(this._ok||!this.map)return;try{this.map.setStyle(this.OSM)}catch(e){}this._bad=setTimeout(()=>{if(!this._ok)this.fallback()},6000)},5000);   /* si Carto no responde, prueba OpenStreetMap; si tampoco, esquema SVG */
-      const r=S.sel,p0=SPOT_LL[SPOTS.indexOf(r.punto)]||SPOT_LL[0];
+      const r=S.sel,p0=spotOf(r);
       const e=document.createElement('div');e.className='mkr meet';e.textContent='★';new maplibregl.Marker({element:e}).setLngLat([p0[1],p0[0]]).addTo(this.map);return true}catch(e){return false}},
   draw(){const el=$('#mapbox');if(!el)return;
     if(this.map){
@@ -145,7 +150,8 @@ const RWP=[
  [[4.6296,-74.1448],[4.7330,-74.2640]]];
 const RouteMap={mem:{},
   wp(rt){return RWP[(rt==null||rt<0?0:rt)%RWP.length]},
-  async coords(rt){rt=(rt==null||rt<0)?0:rt%RWP.length;if(this.mem[rt])return this.mem[rt];
+  async coords(rt){if(S.sel&&S.sel.cr&&rt===S.sel.rt)return S.sel.cr;   /* ruta dibujada por quien creó la rodada */
+    rt=(rt==null||rt<0)?0:rt%RWP.length;if(this.mem[rt])return this.mem[rt];
     try{const c=JSON.parse(localStorage.getItem('rodapp.route.v2.'+rt)||'null');if(c&&c.length>5)return this.mem[rt]=c}catch(e){}
     const w=this.wp(rt),fb=w.map(p=>[p[1],p[0]]);
     try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),9000);
@@ -167,7 +173,8 @@ const RouteMap={mem:{},
   async attach(map,rt){if(!map||map._rt===rt+'')return;map._rt=rt+'';const c=await this.coords(rt);if(this._dead(map))return;this.put(map,c);
     map.on('style.load',()=>this.put(map,c))},
   _dead(map){return !map||!map.getCanvas||!map.getCanvas().isConnected},
-  gmaps(rt){const w=this.wp(rt),o=w[0],d=w[w.length-1],v=w.slice(1,-1);return 'https://www.google.com/maps/dir/?api=1&origin='+o[0]+','+o[1]+'&destination='+d[0]+','+d[1]+(v.length?'&waypoints='+v.map(p=>p[0]+','+p[1]).join('|'):'')+'&travelmode=driving'},
+  gmaps(rt){let w=this.wp(rt);if(S.sel&&S.sel.cr&&rt===S.sel.rt){const c=S.sel.cr,n=c.length,pick=[0,Math.floor(n/3),Math.floor(2*n/3),n-1];w=pick.map(i=>[c[i][1],c[i][0]])}
+    const o=w[0],d=w[w.length-1],v=w.slice(1,-1);return 'https://www.google.com/maps/dir/?api=1&origin='+o[0]+','+o[1]+'&destination='+d[0]+','+d[1]+(v.length?'&waypoints='+v.map(p=>p[0]+','+p[1]).join('|'):'')+'&travelmode=driving'},
   /* Mapa de la ficha de la rodada: ruta real sobre calles. Si no cargan los mosaicos, queda el esquema. */
   async hero(r){const el=$('#rhero');const st=MapKit.styleOf();if(!el||!st||!r)return;
     try{await MapKit.lib();const c=await this.coords(r.rt);if(!$('#rhero')||S.screen!=='detalle')return;
@@ -254,7 +261,7 @@ Object.assign(ACT,{
   locStop:()=>{Live.stop();render()}
 });
 /* El permiso de ubicación se corta al terminar la rodada o cerrar sesión. */
-const _goMap=go;go=function(id){if((S.screen==='mapa'&&id!=='mapa')||(S.screen==='lobby'&&id!=='lobby'))MapKit.leave();if(S.screen==='hud'&&id!=='hud')HudMap.stop();if(['resumen','splash','login'].includes(id))Live.stop();_goMap(id)};
+const _goMap=go;go=function(id){if((S.screen==='mapa'&&id!=='mapa')||(S.screen==='lobby'&&id!=='lobby'))MapKit.leave();if((S.screen==='hud'&&id!=='hud')||(S.screen==='enroute'&&id!=='enroute'))NavMap.stop();if(S.screen==='hud'&&id!=='hud')HudMap.stop();if(['resumen','splash','login'].includes(id))Live.stop();_goMap(id)};
 
 /* Mapa integrado en la sala de espera: se carga al pulsar "Ver mapa del grupo", después de compartir la ubicación. */
 window.lobbyMapInit=async function(){const L=S.lobby;if(!L||S.screen!=='lobby'||!L.mapOn)return;
@@ -263,3 +270,41 @@ window.lobbyMapInit=async function(){const L=S.lobby;if(!L||S.screen!=='lobby'||
   const ok=await MapKit.maplibre(el);if(!ok){el.innerHTML=MapKit.svg()}MapKit.draw();
   every(()=>{if(S.screen!=='lobby'||!S.lobby||!S.lobby.mapOn)return;Live.tick();MapKit.draw()},1000)};
 const _alm=AFTER.lobby;AFTER.lobby=function(){const r=_alm&&_alm.apply(this,arguments);lobbyMapInit();return r};
+
+/* Índice de una ruta: distancia acumulada y punto/rumbo a una distancia dada. */
+function routeIdx(c){const cum=[0];for(let i=1;i<c.length;i++)cum.push(cum[i-1]+hav([c[i-1][1],c[i-1][0]],[c[i][1],c[i][0]]));
+  return{c,cum,at(d){const L=cum[cum.length-1];d=Math.max(0,Math.min(L,d));let i=1;while(i<cum.length-1&&cum[i]<d)i++;
+    const a=c[i-1],b=c[i],f=(d-cum[i-1])/((cum[i]-cum[i-1])||1);
+    return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,(Math.atan2((b[0]-a[0])*Math.cos(a[1]*Math.PI/180),b[1]-a[1])*180/Math.PI+360)%360]}}}
+
+/* ---------- Mapa de navegación (rodadas reales y la prueba): ruta real, curvas, tu posición y la del grupo ----------
+   hud: cámara cercana que te sigue y gira con tu rumbo.  enroute: vista general hacia el punto de encuentro. */
+const NavMap={map:null,mk:{},ok:false,mode:null,hd:0,last:null,fitAt:0,
+  async init(mode){this.stop();const st=MapKit.styleOf(),host=mode==='hud'?document.querySelector('.hudmap'):document.getElementById('enmap');
+    if(!host||!st||!S.sel)return;this.mode=mode;
+    try{await MapKit.lib();const c=await RouteMap.coords(S.sel.rt);if(!document.body.contains(host))return;
+      const box=document.createElement('div');box.id='nmap';box.style.cssText='position:absolute;inset:0;z-index:0';host.prepend(box);
+      const sp=spotOf(S.sel),me=Live.me?[Live.me[1],Live.me[0]]:[sp[1],sp[0]];this.ok=false;
+      this.map=new maplibregl.Map({container:box,style:st,center:me,zoom:mode==='hud'?17:14,pitch:mode==='hud'?58:0,bearing:0,interactive:false,attributionControl:false});
+      this.map.on('data',e=>{if(e.dataType==='source'&&e.tile&&e.sourceDataType!=='metadata'&&e.sourceId!=='ruta'){if(!this.ok){this.ok=true;host.classList.add('nav');const sv=host.querySelector(':scope>svg');if(sv)sv.style.visibility='hidden'}}});
+      RouteMap.put(this.map,c);
+      const mk=(ll,html,cls)=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;new maplibregl.Marker({element:d}).setLngLat(ll).addTo(this.map)};
+      mk([sp[1],sp[0]],'★','mkr meet');mk(c[c.length-1],'⚑','mkr meet fin');
+      this._t=setTimeout(()=>{if(!this.ok)this.stop()},9000);this.update(true)}catch(e){this.stop()}},
+  update(first){const mp=this.map;if(!mp)return;const r=S.sel;
+    if(r&&r.demo&&Live.simMe&&Live.simO)Live.simStep();
+    const m=Live.me,now=Date.now();
+    const put=(id,ll,html,cls,rot)=>{let k=this.mk[id];if(!k){const d=document.createElement('div');d.className=cls;d.innerHTML=html;k=this.mk[id]=new maplibregl.Marker({element:d,rotationAlignment:'map',pitchAlignment:'viewport'}).setLngLat([ll[1],ll[0]]).addTo(mp)}else k.setLngLat([ll[1],ll[0]]);if(rot!=null)k.setRotation(rot);return k};
+    if(m){let hd=this.hd;
+      if(m[3]!=null&&!isNaN(m[3])&&(m[4]==null||m[4]>2))hd=m[3];
+      else if(this.last&&hav(this.last,m)>6){hd=(Math.atan2((m[1]-this.last[1])*Math.cos(m[0]*Math.PI/180),m[0]-this.last[0])*180/Math.PI+360)%360}
+      if(!this.last||hav(this.last,m)>6)this.last=[m[0],m[1]];
+      let df=((hd-this.hd+540)%360)-180;this.hd=(this.hd+df*.5+360)%360;
+      put('me',m,'<svg width="52" height="52" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="rgba(47,217,141,.25)"/><path d="M22 6l11 28-11-6-11 6z" fill="#2FD98D" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>','mkme',this.hd);
+      if(this.mode==='hud')mp.easeTo({center:[m[1],m[0]],bearing:this.hd,pitch:58,zoom:17,duration:first?0:600,easing:t=>t,padding:{top:120,bottom:0,left:0,right:0}})}
+    Object.entries(Live.peers).forEach(([id,q])=>{const k=put(id,q.ll,`<span>${esc(ini(q.n))}</span><em>${esc(first_(q.n))}</em>`,'mkp');const a=now-q.t;k.getElement().style.opacity=a>LOST_MS?.3:a>STALE_MS?.55:1});
+    if(this.mode==='enroute'&&now-this.fitAt>3000){this.fitAt=now;const sp=spotOf(S.sel),pts=[sp];if(m)pts.push(m);Object.values(Live.peers).forEach(q=>pts.push(q.ll));
+      if(pts.length>1){const la=pts.map(p=>p[0]),lo=pts.map(p=>p[1]);try{mp.fitBounds([[Math.min(...lo),Math.min(...la)],[Math.max(...lo),Math.max(...la)]],{padding:50,maxZoom:16,duration:600})}catch(e){}}}},
+  stop(){clearTimeout(this._t);if(this.map){try{this.map.remove()}catch(e){}}this.map=null;this.mk={};this.last=null;
+    document.querySelectorAll('.hudmap.nav').forEach(e=>e.classList.remove('nav'));const b=document.getElementById('nmap');if(b)b.remove();const sv=document.querySelector('.hudmap>svg');if(sv)sv.style.visibility=''}};
+const first_=n=>String(n||'').split(' ')[0];

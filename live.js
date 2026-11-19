@@ -182,6 +182,11 @@ function groupHTML(){const me=Live.me,now=Date.now();
   return (S.sel.pp||[]).filter(p=>p.user_id!==uid()).map(p=>{const q=Live.peers[p.user_id],a=q?now-q.t:null,d=q&&me?hav(me,q.ll):null;
     const st=!q?'Sin ubicación':a>LOST_MS?'Sin señal':a>STALE_MS?'Señal débil':'En vivo',cl=!q||a>LOST_MS?'#FF9500':'#2FD98D';
     return `<div style="display:flex;align-items:center;gap:12px;color:#fff">${av(p.nombre)}<span style="flex:1;min-width:0"><b style="display:block;font-size:16px">${esc(p.nombre)}</b><span style="color:#BFD0C7;font-size:13px">${d==null?'—':'a '+fmtD(d)}</span></span><b style="color:${cl};font-size:13px">${st}</b></div>`}).join('')||'<p class="small" style="color:#BFD0C7">Vas solo en esta rodada.</p>'}
+function groupStrip(){const me=Live.me,now=Date.now();
+  if(!Live.sharing)return `<button class="gchip" data-act="locAllow" style="background:#2FD98D;color:#04130B">${I('pin',16)}Compartir mi ubicación</button>`;
+  const ps=(S.sel.pp||[]).filter(p=>p.user_id!==uid());if(!ps.length)return `<span class="gchip">Eres el único en la rodada</span>`;
+  return ps.map(p=>{const q=Live.peers[p.user_id],a=q?now-q.t:null,d=q&&me?hav(me,q.ll):null,cl=!q||a>LOST_MS?'#FF9500':a>STALE_MS?'#FFC76B':'#2FD98D';
+    return `<span class="gchip"><i style="background:${cl}"></i><b>${esc(first(p.nombre))}</b>${d==null?'sin ubicación':fmtD(d)}</span>`}).join('')}
 function lagChip(){if(!Live.sharing||!Live.me)return null;const now=Date.now();
   const out=(S.sel.pp||[]).filter(p=>p.user_id!==uid()).map(p=>{const q=Live.peers[p.user_id];return q?{n:p.nombre,d:hav(Live.me,q.ll),a:now-q.t}:null}).filter(x=>x&&(x.a>LOST_MS||x.d>LAG_M));
   return out.length?{t:first(out[0].n)+' se quedó atrás'+(out[0].a>LOST_MS?': perdimos su señal.':'. Está a '+fmtD(out[0].d)+'.'),ic:'warn'}:null}
@@ -207,17 +212,23 @@ async function pollEnd(){if(S.screen!=='hud')return;
 AFTER.hud=()=>{if(!real())return _hudAfterSim();clearST();
   if(!S.run)startRun();const R=S.run;R.incomingDone=true;R._v=0;const v=$('#hvoice');v.innerHTML=voiceHTML();
   if(!Live.sharing&&S.consent.ubic)Live.start();
-  const tick=()=>{if(S.screen!=='hud'||!S.run)return;const el=Math.floor((Date.now()-R.t0)/1000),c=$('#hclock');if(!c)return;c.textContent=fmtT(el);
+  NavMap.init('hud');
+  const tick=()=>{if(S.screen!=='hud'||!S.run)return;NavMap.update();const el=Math.floor((Date.now()-R.t0)/1000),c=$('#hclock');if(!c)return;c.textContent=fmtT(el);
     $('#hspd').textContent=(Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):0)+' km/h';
-    const g=$('#hgrp'),h=groupHTML();if(g&&g.dataset.h!==h){g.innerHTML=h;g.dataset.h=h}
+    const g=$('#hgrp'),h=NavMap.ok?groupStrip():groupHTML();if(g&&g.dataset.h!==h){g.innerHTML=h;g.dataset.h=h}
     const chip=R.banner&&Date.now()<R.banner.until?R.banner:lagChip(),ch=$('#hchip');
     if(ch){const html=chip?`<div class="chipf ${chip.g?'g':''}" style="${chip.color?'background:'+chip.color+';color:'+(chip.dk||'#10151A'):''}">${I(chip.ic||'warn',20)}<span>${esc(chip.t)}</span></div>`:'';if(ch.dataset.h!==html){ch.innerHTML=html;ch.dataset.h=html}}};
   every(tick,500);every(()=>Live.tick(),2000);every(pollAlerts,1000);every(pollEnd,3000);pollAlerts();tick()};
 
 /* ---------- camino al punto: distancia real desde el GPS ---------- */
 const _enSim=AFTER.enroute;
-AFTER.enroute=()=>{if(!real())return _enSim();
-  const p0=SPOT_LL[SPOTS.indexOf(S.sel.punto)]||SPOT_LL[0],ed=$('#edist'),et=$('#eeta');ed.textContent='—';et.textContent='Buscando tu ubicación…';
+AFTER.enroute=()=>{if(!real())return _enSim();clearST();
+  const p0=spotOf(S.sel),ed=$('#edist'),et=$('#eeta');ed.textContent='—';et.textContent='Buscando tu ubicación…';
+  if(S.consent.ubic){
+    if(!Live.sharing)Live.start();NavMap.init('enroute');
+    const upd=()=>{if(S.screen!=='enroute')return;Live.tick();NavMap.update();const m=Live.me,e=$('#edist'),t=$('#eeta');if(!e||!m)return;
+      const d=hav(m,p0);if(d<80){e.textContent='Llegaste';t.textContent='Estás en el punto de encuentro'}else{e.textContent=fmtD(d);t.textContent=Math.max(1,Math.round(d/1000/25*60))+' min a tu destino'}};
+    every(upd,1000);upd();return}
   if(!navigator.geolocation){et.textContent='Tu dispositivo no permite ubicación';return}
   const w=navigator.geolocation.watchPosition(p=>{if(S.screen!=='enroute'){navigator.geolocation.clearWatch(w);return}
       const d=hav([p.coords.latitude,p.coords.longitude],p0),e=$('#edist'),t=$('#eeta');if(!e)return;
