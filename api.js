@@ -43,7 +43,7 @@ const RodAPI=(()=>{
     /* Devuelve {status:'clear'|'flag'|'error'}. Solo estado: el detalle no se guarda. */
     async antecedentes({cedula,consent}){
       if(!live){await wait(1600);const c=String(cedula);return{status:'clear',demo:true}}
-      if(C.antecedentes==='piloto'){try{const s=await rest0('/rpc/verificar_piloto',{});return{status:String(s).replace(/"/g,'')}}catch(e){return{status:'error'}}}
+      if(C.antecedentes==='piloto'){try{const s=await rest0('/rpc/verificar_piloto',{});return{status:String(s).replace(/"/g,'')}}catch(e){return{status:'error',msg:String(e&&e.message||e)}}}
       try{return await call('/functions/v1/antecedentes',{method:'POST',headers:hdr(true),body:JSON.stringify({cedula,consent})})}catch(e){return{status:'error'}}},
     async saveConsent(kinds,ver){if(!live)return;
       await call('/rest/v1/consents',{method:'POST',headers:hdr(true),body:JSON.stringify(kinds.map(k=>({user_id:ses.user.id,kind:k,text_version:ver})))})},
