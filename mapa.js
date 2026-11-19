@@ -308,3 +308,22 @@ const NavMap={map:null,mk:{},ok:false,mode:null,hd:0,last:null,fitAt:0,
   stop(){clearTimeout(this._t);if(this.map){try{this.map.remove()}catch(e){}}this.map=null;this.mk={};this.last=null;
     document.querySelectorAll('.hudmap.nav').forEach(e=>e.classList.remove('nav'));const b=document.getElementById('nmap');if(b)b.remove();const sv=document.querySelector('.hudmap>svg');if(sv)sv.style.visibility=''}};
 const first_=n=>String(n||'').split(' ')[0];
+
+/* ---------- Sensor de movimiento (acelerómetro + giroscopio del teléfono) ----------
+   Ante un movimiento brusco (golpe, caída, giro violento) lanza solo la alerta "Precaución · movimiento brusco" al grupo con tu nombre.
+   Tiene el mismo botón de "Fue un error · Cancelar" que las alertas manuales. Se mide con el teléfono; no usa GPS. */
+const Gyro={on:true,ok:false,last:0,FORCE:30,ROT:600,_h:null,
+  async enable(){try{if(typeof DeviceMotionEvent==='undefined')return this.ok=false;
+      if(typeof DeviceMotionEvent.requestPermission==='function'){const r=await DeviceMotionEvent.requestPermission();if(r!=='granted')return this.ok=false}}catch(e){return this.ok=false}
+    if(!this._h){this._h=e=>this.sample(e);window.addEventListener('devicemotion',this._h)}return this.ok=true},
+  sample(e){if(!this.on||S.screen!=='hud'||!S.run)return;const a=e.acceleration,g=e.accelerationIncludingGravity||{},rr=e.rotationRate||{};
+    const lin=a&&a.x!=null?Math.hypot(a.x,a.y,a.z):Math.abs(Math.hypot(g.x||0,g.y||0,g.z||0)-9.81),rot=Math.hypot(rr.alpha||0,rr.beta||0,rr.gamma||0),now=Date.now();
+    if((lin>this.FORCE||rot>this.ROT)&&now-this.last>25000){this.last=now;this.fire()}},
+  fire(){if(S.screen!=='hud'||!S.run)return;ACT.alert({k:'brusco'})}};
+function gyroHTML(){const t=Gyro.ok&&Gyro.on?'Sensor de movimiento activo · avisa al grupo si hay un movimiento brusco':Gyro.ok?'Sensor de movimiento apagado · toca para activarlo':'Toca para activar el sensor de movimiento';
+  const test=S.sel&&(S.sel.demo||S.sel.sim)?'<button class="gyt" data-act="gyroTest" aria-label="Simular un movimiento brusco">Probar</button>':'';
+  return `<div class="gyr"><button class="gyb ${Gyro.ok&&Gyro.on?'on':''}" id="hgy" data-act="gyro" aria-pressed="${Gyro.ok&&Gyro.on}">${I('gauge',20)}<span>${t}</span></button>${test}</div>`}
+Object.assign(ACT,{
+  gyro:async()=>{if(!Gyro.ok){await Gyro.enable();Gyro.on=true}else Gyro.on=!Gyro.on;const e=$('#hgy');if(e){const w=e.parentNode;w.outerHTML=gyroHTML()}},
+  gyroTest:()=>Gyro.fire()});
+const _gyHud=AFTER.hud;AFTER.hud=function(){const r=_gyHud&&_gyHud.apply(this,arguments);Gyro.enable().then(()=>{const e=$('#hgy');if(e)e.parentNode.outerHTML=gyroHTML()});return r};

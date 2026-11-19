@@ -488,3 +488,9 @@ input[type=range]{accent-color:var(--green);min-height:32px}
 .gchip b{font-weight:700}
 .re-via{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #04130B;box-shadow:0 1px 6px rgba(0,0,0,.5);cursor:pointer}
 .re-a{background:#2FD98D}.re-b{background:#fff}
+
+.gyr{display:flex;gap:8px;margin:8px 14px 0;flex:none}
+.gyb{flex:1;display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:14px;background:#10151A;color:#BFD0C7;text-align:left;font-size:13px;border:1px solid rgba(255,255,255,.12)}
+.gyb.on{color:#fff;border-color:#2FD98D}
+.gyb svg{flex:none}
+.gyt{min-height:44px;padding:0 14px;border-radius:14px;background:#FFD60A;color:#1A1400;font-weight:700;font-size:13px}

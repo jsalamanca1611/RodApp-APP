@@ -175,6 +175,7 @@ SCR.hud=()=>{if(!real())return _hudSim();const R=S.run;
   <button class="ab org" data-act="alert" data-k="parada">${I('wrench',38,2.2)}<span>PARADA TÉCNICA</span></button>
   <button class="ab blu" data-act="alert" data-k="gasolina">${I('fuel',38,2.2)}<span>GASOLINA / DESCANSO</span></button>
  </div>
+ ${gyroHTML()}
  <div class="endrow"><button data-act="endAsk">${S.sel.host==='Tú'?'Finalizar rodada':'Salir de la rodada'}</button></div></div>`};
 
 function groupHTML(){const me=Live.me,now=Date.now();
@@ -212,7 +213,7 @@ async function pollEnd(){if(S.screen!=='hud')return;
 AFTER.hud=()=>{if(!real())return _hudAfterSim();clearST();
   if(!S.run)startRun();const R=S.run;R.incomingDone=true;R._v=0;const v=$('#hvoice');v.innerHTML=voiceHTML();
   if(!Live.sharing&&S.consent.ubic)Live.start();
-  NavMap.init('hud');
+  NavMap.init('hud');Gyro.enable().then(()=>{const e=$('#hgy');if(e)e.parentNode.outerHTML=gyroHTML()});
   const tick=()=>{if(S.screen!=='hud'||!S.run)return;NavMap.update();const el=Math.floor((Date.now()-R.t0)/1000),c=$('#hclock');if(!c)return;c.textContent=fmtT(el);
     $('#hspd').textContent=(Live.me&&Live.me[4]!=null?Math.round(Live.me[4]):0)+' km/h';
     const g=$('#hgrp'),h=NavMap.ok?groupStrip():groupHTML();if(g&&g.dataset.h!==h){g.innerHTML=h;g.dataset.h=h}

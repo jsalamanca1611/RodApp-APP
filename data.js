@@ -40,7 +40,8 @@ const TINTS=[['#D3F3E3','#064D2D'],['#DCE8FF','#123A7A'],['#FFE7C2','#6B3D00'],[
 const ALERTS={
   peligro:{t:'Peligro / Caída',say:'Peligro adelante',k:'#FF3B30',kt:'#fff',ic:'warn'},
   parada:{t:'Parada técnica',say:'Parada técnica',k:'#FF9500',kt:'#1A0F00',ic:'wrench'},
-  gasolina:{t:'Gasolina / Descanso',say:'Paramos a tanquear o descansar',k:'#007AFF',kt:'#fff',ic:'fuel'}
+  gasolina:{t:'Gasolina / Descanso',say:'Paramos a tanquear o descansar',k:'#007AFF',kt:'#fff',ic:'fuel'},
+  brusco:{t:'Precaución · movimiento brusco',say:'tuvo un movimiento brusco. Precaución',k:'#FFD60A',kt:'#1A1400',ic:'warn'}
 };
 function seed(){return [
  {id:1,name:'La Calera – Guasca',zona:'Calera',cc:'200–500',nivel:'Intermedio',fecha:FECHAS[1],hora:'7:00 AM',cupo:8,part:['Mauricio T.','Sofía M.','Julián P.','Andrés F.','Laura G.'],punto:SPOTS[1],km:52,rt:0,host:'Mauricio T.',club:'Calera Riders',ver:true},
