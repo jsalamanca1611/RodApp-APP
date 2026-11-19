@@ -17,7 +17,7 @@ try:
       pg.add_init_script("window.RODAPP_OVERRIDE="+ov+";"+FAKE)
       pg.goto('http://localhost:8765/index.html'); pg.wait_for_timeout(500)
       pg.evaluate("ACT.login();Tour.stop()"); pg.wait_for_timeout(800); pg.evaluate("Tour.stop()")
-      pg.evaluate("S.sel=S.rides[0]||{id:1,name:'x',punto:SPOTS[0],zona:'Norte'};S.consent.ubic=true;go('mapa')"); pg.wait_for_timeout(300)
+      pg.evaluate("S.sel={id:1,name:'x',punto:SPOTS[0],zona:'Norte',part:[],pp:[],rt:0};S.consent.ubic=true;go('mapa')"); pg.wait_for_timeout(300)
       pg.evaluate("Live.start()"); pg.wait_for_timeout(1500)
       tag='live' if live else 'demo'
       chk(tag+': reintenta con ubicación por red tras agotarse el GPS',pg.evaluate("window.__n()")>=2)
@@ -29,7 +29,7 @@ try:
     pg.add_init_script("window.RODAPP_OVERRIDE={supabaseUrl:'https://x.invalid',anonKey:'k',mapStyle:''};Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(){},clearWatch(){},watchPosition(s,e){setTimeout(()=>e({code:1}),200);return 1}},configurable:true});")
     pg.goto('http://localhost:8765/index.html'); pg.wait_for_timeout(500)
     pg.evaluate("ACT.login();Tour.stop()"); pg.wait_for_timeout(800); pg.evaluate("Tour.stop()")
-    pg.evaluate("S.sel=S.rides[0]||{id:1,name:'x',punto:SPOTS[0],zona:'Norte'};S.consent.ubic=true;go('mapa')"); pg.wait_for_timeout(300)
+    pg.evaluate("S.sel={id:1,name:'x',punto:SPOTS[0],zona:'Norte',part:[],pp:[],rt:0};S.consent.ubic=true;go('mapa')"); pg.wait_for_timeout(300)
     pg.evaluate("Live.start()"); pg.wait_for_timeout(1200)
     chk('real: GPS denegado → no se inventa tu posición',pg.evaluate("Live.me===null&&!Live.simMe&&Live.err==='denegado'"))
     b.close()
