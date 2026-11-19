@@ -66,10 +66,10 @@ let _vr=0;
 const _publish=ACT.publish;
 ACT.publish=async()=>{const c=S.cr,e={};['nombre','cc','zona','fecha','hora','punto'].forEach(k=>{if(!c[k]||(k==='nombre'&&!c.nombre.trim()))e[k]=1});
   if(Object.keys(e).length)return _publish();
-  const i=c.ruta==null?0:c.ruta;
-  try{const row=await rest('/rides','POST',{nombre:c.nombre.trim(),zona:c.zona,cc:c.cc,nivel:c.nivel,fecha:c.fecha,hora:c.hora,cupo:c.cupo,punto:c.punto,km:RKM[i],rt:i,host:uid(),host_nombre:S.user.nombre},'return=representation');
+  const cu=c.custom,i=cu?0:(c.ruta==null?0:c.ruta);
+  try{const row=await rest('/rides','POST',Object.assign({nombre:c.nombre.trim(),zona:c.zona,cc:c.cc,nivel:c.nivel,fecha:c.fecha,hora:c.hora,cupo:c.cupo,punto:c.punto,km:cu?cu.km:RKM[i],rt:i,host:uid(),host_nombre:S.user.nombre},cu?{ruta:cu.coords}:{}),'return=representation');
     await refreshRides(true);S.sel=S.rides.find(r=>r.id===row[0].id)||toRide(Object.assign(row[0],{ride_participants:[]}));
-    S.cr={nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null};S.errs={};
+    S.cr={custom:null,nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null};S.errs={};
     initLobby(true);toast('Rodada publicada');go('lobby')}
   catch(err){if(is403(err)&&!_vr){_vr=1;const okv=await reverify();_vr=0;if(okv)return ACT.publish()}toast(msgErr(err))}};
 

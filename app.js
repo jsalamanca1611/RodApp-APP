@@ -23,7 +23,7 @@ function fresh(){
    kyc:{step:0,front:'idle',back:'idle',selfie:'idle',failedOnce:false,msg:''},
    veh:{cc:null,tipo:null,marca:'',placa:'',bt:false},
    f:{cc:null,zona:null,fecha:null},
-   cr:{nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null},
+   cr:{custom:null,nombre:'',ruta:null,cc:null,zona:null,nivel:'Intermedio',fecha:null,hora:null,cupo:8,punto:null},
    errs:{},lobby:null,run:null,rate:{},demo:{sound:true,fail:false},micOk:true,
    tryPrev:null,xp:900,rodadas:12,badges:['bog','vvc'],award:null,zonaMia:'Norte',rating:4.8,premium:false,club:'halcones',clubs:{vista:'copas',reg:'Bogotá y Sabana',cc:null,liga:null,sel:null,sim:null},com:{vista:'tu',tema:null,gfilter:null,grupos:['norte'],conf:{},posts:comSeed(),liked:{},gusta:{},open:null,draft:{tema:null,txt:'',video:false},err:false}
   });
@@ -264,14 +264,15 @@ SCR.perfil=()=>{const u=S.user||{nombre:'Camilo Rojas',exp:'Intermedio'},xi=xpIn
 SCR.crear=()=>{const c=S.cr,e=S.errs;
  const grp=(k,l,arr,fmt=x=>x)=>`<div class="msgbox ${e[k]?'err':''}"><div class="lab" style="margin-bottom:8px">${l}</div><div class="chips ${e[k]?'opts err':''}">${arr.map(x=>`<button class="chip" aria-pressed="${c[k]===x}" data-act="cset" data-k="${k}" data-v="${x}">${fmt(x)}</button>`).join('')}</div><span class="msg">Elige una opción.</span></div>`;
  return `<div class="scr light">${hdr('Crear rodada','home')}<div class="body">
- <div class="msgbox"><div class="lab" style="margin-bottom:8px" id="lr">Ruta sugerida desde Bogotá</div><div class="cards" role="radiogroup" aria-labelledby="lr">${RUTAS.map((R,i)=>`<button class="opt" role="radio" aria-checked="${c.ruta===i}" data-act="cruta" data-v="${i}" style="min-height:58px"><span><b>${R.n}</b><span class="d">${R.z} · ~${R.km} km · ida y vuelta el mismo día</span></span><span class="rad">${c.ruta===i?I('check',13,3.5):''}</span></button>`).join('')}</div></div>
+ <div class="msgbox"><div class="lab" style="margin-bottom:8px">Tu propia ruta</div>${c.custom?`<div class="fact" style="display:flex;gap:12px;align-items:center;justify-content:space-between">${I('route',24)}<div style="flex:1"><b style="font-size:15px">Ruta propia · ~${c.custom.km} km</b><span>Sale del punto que marcaste en el mapa</span></div></div><div style="display:flex;gap:10px;margin-top:8px"><button class="btn sm ghost" style="flex:1" data-act="reEdit">Editar en el mapa</button><button class="btn sm link" style="flex:1" data-act="reDel">Quitar</button></div>`:`<button class="opt" data-act="reNew" style="min-height:62px">${I('pin',22)}<span><b>Dibujar mi ruta en el mapa</b><span class="d">Pon el inicio y el destino; la ruta se traza sola y la puedes mover arrastrándola.</span></span></button>`}</div>
+ <div class="msgbox"><div class="lab" style="margin-bottom:8px" id="lr">O elige una ruta sugerida desde Bogotá</div><div class="cards" role="radiogroup" aria-labelledby="lr">${RUTAS.map((R,i)=>`<button class="opt" role="radio" aria-checked="${c.ruta===i}" data-act="cruta" data-v="${i}" style="min-height:58px"><span><b>${R.n}</b><span class="d">${R.z} · ~${R.km} km · ida y vuelta el mismo día</span></span><span class="rad">${c.ruta===i?I('check',13,3.5):''}</span></button>`).join('')}</div></div>
  <div class="field ${e.nombre?'err':''}"><label for="c_n">Nombre de la rodada</label><input id="c_n" placeholder="Ej. Domingo de neblina en La Calera" data-bind="cr.nombre" data-k="nombre" value="${esc(c.nombre)}"><span class="msg">Ponle un nombre a tu rodada.</span></div>
  ${grp('cc','Cilindraje mínimo',['<200','200–500','>500'],x=>x+' cc')}
  ${grp('zona','Zona',ZONAS)}
  ${grp('nivel','Nivel requerido',Object.keys(NIV))}
  ${grp('fecha','Fecha',FECHAS)}
  ${grp('hora','Hora de salida',HORAS)}
- <div class="msgbox ${e.punto?'err':''}"><div class="lab" style="margin-bottom:8px">Punto de encuentro</div><div class="cards ${e.punto?'opts err':''}" style="gap:8px">${SPOTS.map(s=>`<button class="opt" role="radio" aria-checked="${c.punto===s}" data-act="cset" data-k="punto" data-v="${esc(s)}" style="min-height:54px">${I('pin',20)}<b style="font-size:15px;font-weight:400">${s}</b><span class="rad">${c.punto===s?I('check',13,3.5):''}</span></button>`).join('')}</div><span class="msg">Elige dónde se encuentra el grupo.</span></div>
+ <div class="msgbox ${e.punto?'err':''}" style="${c.custom?'display:none':''}"><div class="lab" style="margin-bottom:8px">Punto de encuentro</div><div class="cards ${e.punto?'opts err':''}" style="gap:8px">${SPOTS.map(s=>`<button class="opt" role="radio" aria-checked="${c.punto===s}" data-act="cset" data-k="punto" data-v="${esc(s)}" style="min-height:54px">${I('pin',20)}<b style="font-size:15px;font-weight:400">${s}</b><span class="rad">${c.punto===s?I('check',13,3.5):''}</span></button>`).join('')}</div><span class="msg">Elige dónde se encuentra el grupo.</span></div>
  <div><div class="lab" style="margin-bottom:8px">Cupos (contándote a ti)</div><div style="display:flex;align-items:center;gap:16px"><button class="ib" style="background:var(--surface)" data-act="cupo" data-d="-1" aria-label="Menos cupos"><span style="font-size:26px;line-height:1">−</span></button><b style="font:400 30px var(--display);min-width:40px;text-align:center">${c.cupo}</b><button class="ib" style="background:var(--surface)" data-act="cupo" data-d="1" aria-label="Más cupos">${I('plus',22)}</button></div></div>
  ${Object.keys(e).length?`<div class="banner err">${I('warn',20)}<span>Completa los campos marcados para publicar.</span></div>`:''}
  </div><div class="foot"><button class="btn" data-act="publish">Publicar rodada</button></div></div>`};
@@ -467,7 +468,7 @@ const ACT={
  endAsk:()=>openLayer(`<div class="scrim" data-act="closeLayer"></div><div class="dlg sheet" role="dialog"><h2 class="t">¿Finalizar la rodada para todo el grupo?</h2><p>Si ya llegaron al destino, finaliza para ver el resumen.</p><button class="btn" data-act="end">Sí, finalizar</button><button class="btn ghost" data-act="closeLayer">Cancelar</button></div>`),
  end:()=>{closeLayer();awardRide();go('resumen')},
  cset:d=>{S.cr[d.k]=d.v;delete S.errs[d.k];render()},
- cruta:d=>{const i=+d.v,R=RUTAS[i];S.cr.ruta=i;if(!S.cr.nombre||RNAMES.includes(S.cr.nombre))S.cr.nombre=R.n;S.cr.zona=R.z;S.cr.punto=SPOTS[R.p];delete S.errs.zona;delete S.errs.punto;render()},
+ cruta:d=>{const i=+d.v,R=RUTAS[i];S.cr.custom=null;S.cr.ruta=i;if(!S.cr.nombre||RNAMES.includes(S.cr.nombre))S.cr.nombre=R.n;S.cr.zona=R.z;S.cr.punto=SPOTS[R.p];delete S.errs.zona;delete S.errs.punto;render()},
  cupo:d=>{S.cr.cupo=Math.min(12,Math.max(2,S.cr.cupo+ +d.d));render()},
  publish:()=>{const c=S.cr,e={};['nombre','cc','zona','fecha','hora','punto'].forEach(k=>{if(!c[k]||(k==='nombre'&&!c.nombre.trim()))e[k]=1});S.errs=e;if(Object.keys(e).length){render();const b=$('.body');b&&b.scrollTo({top:0,behavior:'smooth'});return}
    const i=c.ruta==null?0:c.ruta;const r={id:Date.now()%100000,name:c.nombre.trim(),zona:c.zona,cc:c.cc,nivel:c.nivel,fecha:c.fecha,hora:c.hora,cupo:c.cupo,part:['Tú'],punto:c.punto,km:RKM[i],rt:i,host:'Tú',club:'Tu rodada',ver:true};

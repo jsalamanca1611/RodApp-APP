@@ -486,3 +486,5 @@ input[type=range]{accent-color:var(--green);min-height:32px}
 .gchip{display:inline-flex;align-items:center;gap:6px;flex:none;padding:7px 12px;border-radius:999px;background:rgba(4,19,11,.82);color:#fff;font-size:13px;border:1px solid rgba(255,255,255,.14);white-space:nowrap}
 .gchip i{width:9px;height:9px;border-radius:50%}
 .gchip b{font-weight:700}
+.re-via{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid #04130B;box-shadow:0 1px 6px rgba(0,0,0,.5);cursor:pointer}
+.re-a{background:#2FD98D}.re-b{background:#fff}
